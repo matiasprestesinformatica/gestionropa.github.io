@@ -15,7 +15,7 @@ export function AppHeader() {
         </div>
         <div className="flex items-center gap-4">
           <p className="text-sm text-muted-foreground hidden sm:block">
-            Your Personal AI Fashion Advisor
+            Combinacion con IA Express
           </p>
           <Link href="/closet" passHref legacyBehavior>
             <Button variant="outline" size="sm" asChild>
