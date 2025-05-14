@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface StyleOption {
@@ -45,3 +46,26 @@ export const placeholderOutfits: Record<string, OutfitItem[]> = {
     { id: 'b4', name: 'Statement Necklace', imageUrl: 'https://placehold.co/300x400.png', category: 'Accessory', aiHint: 'statement necklace' },
   ],
 };
+
+// --- Closet Management Types ---
+export interface ClothingItem {
+  id: string; // UUID from Supabase
+  created_at: string; // Timestamp from Supabase
+  name: string;
+  type: string;
+  color: string;
+  size: string;
+  season: string;
+  occasion: string;
+  image_url: string;
+  min_temp?: number | null;
+  max_temp?: number | null;
+  style: string;
+  // user_id?: string; // If you add user authentication
+}
+
+export const CLOTHING_TYPES = ['Camisa', 'Pantalón', 'Vestido', 'Falda', 'Chaqueta', 'Suéter', 'Zapatos', 'Accesorio', 'Otro'] as const;
+export const SEASONS = ['Verano', 'Invierno', 'Otoño', 'Primavera', 'Todo el Año'] as const;
+export const OCCASIONS = ['Casual', 'Formal', 'Deportivo', 'Trabajo', 'Fiesta', 'Vacaciones', 'Otro'] as const;
+// We can reuse StyleOption for styles or define a new list if needed.
+// For now, assuming the existing StyleOption ids are used for 'style'.
