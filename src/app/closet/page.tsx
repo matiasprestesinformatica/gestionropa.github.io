@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Added AlertDialogTrigger here
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent } from '@/components/ui/card'; // Using ShadCN Card
 import { ClothingForm, type PrendaFormData } from '@/components/ClothingForm'; // Updated to PrendaFormData
@@ -58,7 +58,7 @@ export default function ClosetPage() {
     fetchItems();
   }, [fetchItems]);
 
-  const handleFormSubmit = async (data: PrendaFormData, itemId?: string) => { // Updated to PrendaFormData
+  const handleFormSubmit = async (data: PrendaFormData, itemId?: number) => { // Updated itemId to number
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -66,7 +66,7 @@ export default function ClosetPage() {
       }
     });
     
-    const action = itemId ? updatePrendaAction(itemId, formData) : addPrendaAction(formData); // Updated action names
+    const action = itemId !== undefined ? updatePrendaAction(itemId, formData) : addPrendaAction(formData); // Updated action names
     const result = await action;
 
     if (!result.error) {
@@ -78,7 +78,7 @@ export default function ClosetPage() {
   const handleDeleteItem = async () => {
     if (!itemToDelete) return;
 
-    const result = await deletePrendaAction(itemToDelete.id); // Updated action name
+    const result = await deletePrendaAction(itemToDelete.id); // Updated action name, id is now number
     if (result.error) {
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
     } else {

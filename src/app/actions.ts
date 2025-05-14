@@ -126,7 +126,7 @@ export async function getPrendasAction(): Promise<{ data?: Prenda[]; error?: str
   }
 }
 
-export async function updatePrendaAction(itemId: string, formData: FormData): Promise<{ data?: Prenda; error?: string; validationErrors?: z.ZodIssue[] }> {
+export async function updatePrendaAction(itemId: number, formData: FormData): Promise<{ data?: Prenda; error?: string; validationErrors?: z.ZodIssue[] }> {
   if (!supabase) return { error: "Supabase client not initialized." };
 
   const rawFormData = Object.fromEntries(formData.entries());
@@ -173,7 +173,7 @@ export async function updatePrendaAction(itemId: string, formData: FormData): Pr
   }
 }
 
-export async function deletePrendaAction(itemId: string): Promise<{ success?: boolean; error?: string }> {
+export async function deletePrendaAction(itemId: number): Promise<{ success?: boolean; error?: string }> {
   if (!supabase) return { error: "Supabase client not initialized." };
 
   try {

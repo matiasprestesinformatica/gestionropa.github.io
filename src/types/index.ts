@@ -50,7 +50,7 @@ export const placeholderOutfits: Record<string, OutfitItem[]> = {
 // --- Closet Management Types ---
 // Renamed ClothingItem to Prenda and updated field names to Spanish
 export interface Prenda {
-  id: string; // UUID from Supabase
+  id: number; // Changed from string to number for SERIAL PK
   created_at: string; // Timestamp from Supabase
   nombre: string;
   tipo: string;

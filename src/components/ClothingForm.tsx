@@ -49,9 +49,9 @@ export type PrendaFormData = z.infer<typeof prendaFormSchema>;
 interface ClothingFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSubmit: (data: PrendaFormData, itemId?: string) => Promise<{error?: string, validationErrors?: z.ZodIssue[]}>;
+  onSubmit: (data: PrendaFormData, itemId?: number) => Promise<{error?: string, validationErrors?: z.ZodIssue[]}>; // itemId changed to number
   initialData?: Prenda | null; // Updated to Prenda
-  itemId?: string | null;
+  itemId?: number | null; // Changed to number
 }
 
 export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, itemId }: ClothingFormProps) {
@@ -101,7 +101,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
 
   const handleFormSubmit = async (data: PrendaFormData) => {
     setIsSubmitting(true);
-    const result = await onSubmit(data, itemId || undefined);
+    const result = await onSubmit(data, itemId !== null ? itemId : undefined); // Pass number or undefined
     setIsSubmitting(false);
 
     if (result.error) {
