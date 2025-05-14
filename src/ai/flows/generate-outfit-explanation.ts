@@ -1,3 +1,4 @@
+
 // use server'
 
 /**
@@ -38,7 +39,9 @@ const getUserClosetInformation = ai.defineTool(
         // TODO: Implement the actual retrieval of user closet information here.
         // This is a placeholder. In a real application, this would connect to
         // a database or service to fetch the user's closet data.
-        return `Detailed information about user closet is not available. Faking closet information containing ${input.style} items.`;
+        // For now, the outfit is already selected from the closet, so this tool's
+        // current implementation might provide redundant or conflicting info if not updated.
+        return `User's closet items for style ${input.style} were considered in the suggestion.`;
     }
 );
 
@@ -53,13 +56,15 @@ const prompt = ai.definePrompt({
   tools: [getUserClosetInformation],
   prompt: `You are an AI fashion assistant that generates explanations for suggested outfits.
 
-  The outfit is: {{{outfitDescription}}}
-  The temperature range is: {{{temperatureRange}}}
-  The selected style is: {{{selectedStyle}}}
+The outfit is: {{{outfitDescription}}}
+The temperature range is: {{{temperatureRange}}}
+The selected style is: {{{selectedStyle}}}
 
-  {% if userClosetInformationNeeded %}The user has indicated that information about their closet is relevant, use the getUserClosetInformation tool.{% endif %}
+{{#if userClosetInformationNeeded}}
+The user has indicated that information about their closet is relevant. Use the getUserClosetInformation tool if you need specific details about other items in their closet for the given style to enrich your explanation. The provided outfitDescription already consists of items from the user's closet.
+{{/if}}
 
-  Explain why this outfit is suitable, considering the temperature, selected style, and user closet (if relevant).  Be concise but informative.
+Explain why this outfit is suitable, considering the temperature, selected style, and the fact that items are from the user's closet (if {{{userClosetInformationNeeded}}} is true). Be concise but informative.
   `,
 });
 
@@ -70,14 +75,11 @@ const generateOutfitExplanationFlow = ai.defineFlow(
     outputSchema: GenerateOutfitExplanationOutputSchema,
   },
   async input => {
-    let promptInput = input;
-    if (input.userClosetInformationNeeded) {
-      const closetInfo = await getUserClosetInformation({
-        style: input.selectedStyle,
-      });
-      promptInput = {...input, closetInfo };
-    }
-    const { output } = await prompt(promptInput);
+    // The prompt itself will decide if it needs to call the tool based on its instructions
+    // and the 'tools' array provided in its definition.
+    // The 'input.userClosetInformationNeeded' can guide the LLM's decision.
+    // No need to manually call the tool here if it's part of the prompt's toolset.
+    const { output } = await prompt(input);
     return output!;
   }
 );
