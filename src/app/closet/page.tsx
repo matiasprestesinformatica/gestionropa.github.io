@@ -22,6 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added AlertDialogTrigger here
 } from '@/components/ui/alert-dialog';
 import { Card, CardContent } from '@/components/ui/card'; // Using ShadCN Card
 import { ClothingForm, type PrendaFormData } from '@/components/ClothingForm'; // Updated to PrendaFormData
