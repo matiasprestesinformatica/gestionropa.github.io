@@ -48,24 +48,31 @@ export const placeholderOutfits: Record<string, OutfitItem[]> = {
 };
 
 // --- Closet Management Types ---
-export interface ClothingItem {
+// Renamed ClothingItem to Prenda and updated field names to Spanish
+export interface Prenda {
   id: string; // UUID from Supabase
   created_at: string; // Timestamp from Supabase
-  name: string;
-  type: string;
+  nombre: string;
+  tipo: string;
   color: string;
-  size: string;
-  season: string;
-  occasion: string;
-  image_url: string;
-  min_temp?: number | null;
-  max_temp?: number | null;
-  style: string;
+  talla: string;
+  temporada: string;
+  ocasion: string;
+  imagen_url: string;
+  temperatura_min?: number | null;
+  temperatura_max?: number | null;
+  estilo: string;
   // user_id?: string; // If you add user authentication
 }
 
 export const CLOTHING_TYPES = ['Camisa', 'Pantalón', 'Vestido', 'Falda', 'Chaqueta', 'Suéter', 'Zapatos', 'Accesorio', 'Otro'] as const;
+export type TipoPrenda = typeof CLOTHING_TYPES[number];
+
 export const SEASONS = ['Verano', 'Invierno', 'Otoño', 'Primavera', 'Todo el Año'] as const;
+export type TemporadaPrenda = typeof SEASONS[number];
+
 export const OCCASIONS = ['Casual', 'Formal', 'Deportivo', 'Trabajo', 'Fiesta', 'Vacaciones', 'Otro'] as const;
-// We can reuse StyleOption for styles or define a new list if needed.
-// For now, assuming the existing StyleOption ids are used for 'style'.
+export type OcasionPrenda = typeof OCCASIONS[number];
+
+// Reusing StyleOption for styles. Ensure style IDs match what's stored.
+export type EstiloPrenda = StyleOption['id'];

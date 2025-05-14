@@ -22,28 +22,28 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ClothingForm, type ClothingItemFormData } from '@/components/ClothingForm';
-import { addClothingItemAction, getClothingItemsAction, updateClothingItemAction, deleteClothingItemAction } from '@/app/actions';
-import type { ClothingItem } from '@/types';
+import { Card, CardContent } from '@/components/ui/card'; // Using ShadCN Card
+import { ClothingForm, type PrendaFormData } from '@/components/ClothingForm'; // Updated to PrendaFormData
+import { addPrendaAction, getPrendasAction, updatePrendaAction, deletePrendaAction } from '@/app/actions'; // Updated action names
+import type { Prenda } from '@/types'; // Updated to Prenda
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, PackageOpen } from 'lucide-react';
 
 export default function ClosetPage() {
-  const [items, setItems] = React.useState<ClothingItem[]>([]);
+  const [items, setItems] = React.useState<Prenda[]>([]); // Updated to Prenda[]
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [editingItem, setEditingItem] = React.useState<ClothingItem | null>(null);
-  const [itemToDelete, setItemToDelete] = React.useState<ClothingItem | null>(null);
+  const [editingItem, setEditingItem] = React.useState<Prenda | null>(null); // Updated to Prenda
+  const [itemToDelete, setItemToDelete] = React.useState<Prenda | null>(null); // Updated to Prenda
 
   const { toast } = useToast();
 
   const fetchItems = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const result = await getClothingItemsAction();
+    const result = await getPrendasAction(); // Updated action name
     if (result.error) {
       setError(result.error);
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
@@ -57,7 +57,7 @@ export default function ClosetPage() {
     fetchItems();
   }, [fetchItems]);
 
-  const handleFormSubmit = async (data: ClothingItemFormData, itemId?: string) => {
+  const handleFormSubmit = async (data: PrendaFormData, itemId?: string) => { // Updated to PrendaFormData
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -65,29 +65,29 @@ export default function ClosetPage() {
       }
     });
     
-    const action = itemId ? updateClothingItemAction(itemId, formData) : addClothingItemAction(formData);
+    const action = itemId ? updatePrendaAction(itemId, formData) : addPrendaAction(formData); // Updated action names
     const result = await action;
 
     if (!result.error) {
-      fetchItems(); // Refresh list
+      fetchItems(); 
     }
-    return result; // Return result for form to handle its state
+    return result; 
   };
 
   const handleDeleteItem = async () => {
     if (!itemToDelete) return;
 
-    const result = await deleteClothingItemAction(itemToDelete.id);
+    const result = await deletePrendaAction(itemToDelete.id); // Updated action name
     if (result.error) {
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
     } else {
       toast({ title: 'Éxito', description: 'Prenda eliminada correctamente.', variant: 'default' });
-      fetchItems(); // Refresh list
+      fetchItems(); 
     }
-    setItemToDelete(null); // Close dialog
+    setItemToDelete(null); 
   };
 
-  const openEditForm = (item: ClothingItem) => {
+  const openEditForm = (item: Prenda) => { // Updated to Prenda
     setEditingItem(item);
     setIsFormOpen(true);
   };
@@ -97,8 +97,6 @@ export default function ClosetPage() {
     setIsFormOpen(true);
   };
   
-  const defaultImageAiHint = "clothing item";
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <AppHeader />
@@ -163,19 +161,19 @@ export default function ClosetPage() {
                     <TableCell>
                       <div className="relative h-16 w-16 rounded-md overflow-hidden border border-border">
                         <Image
-                          src={item.image_url || `https://placehold.co/64x64.png?text=${encodeURIComponent(item.name.substring(0,2))}`}
-                          alt={item.name}
+                          src={item.imagen_url || `https://placehold.co/64x64.png?text=${encodeURIComponent(item.nombre.substring(0,2))}`}
+                          alt={item.nombre}
                           layout="fill"
                           objectFit="cover"
-                          data-ai-hint={`${item.type.toLowerCase()} ${item.color.toLowerCase()}`.substring(0,50)} // Simple AI hint
+                          data-ai-hint={`${item.tipo.toLowerCase()} ${item.color.toLowerCase()}`.substring(0,50)}
                         />
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.type}</TableCell>
+                    <TableCell className="font-medium">{item.nombre}</TableCell>
+                    <TableCell>{item.tipo}</TableCell>
                     <TableCell>{item.color}</TableCell>
-                    <TableCell>{item.size}</TableCell>
-                    <TableCell>{item.style}</TableCell>
+                    <TableCell>{item.talla}</TableCell>
+                    <TableCell>{item.estilo}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openEditForm(item)} className="mr-2 hover:text-primary">
                         <Edit className="h-4 w-4" />
@@ -192,7 +190,7 @@ export default function ClosetPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              Esta acción no se puede deshacer. Esto eliminará permanentemente la prenda &quot;{itemToDelete?.name}&quot; de tu armario.
+                              Esta acción no se puede deshacer. Esto eliminará permanentemente la prenda &quot;{itemToDelete?.nombre}&quot; de tu armario.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -227,13 +225,3 @@ export default function ClosetPage() {
     </div>
   );
 }
-
-// Minimal Card components if not imported from ui (for structure)
-// In a real app, these would be ShadCN components
-const Card = ({ className, children }: { className?: string, children: React.ReactNode }) => (
-  <div className={`bg-card border rounded-lg ${className}`}>{children}</div>
-);
-const CardContent = ({ className, children }: { className?: string, children: React.ReactNode }) => (
-  <div className={`p-6 ${className}`}>{children}</div>
-);
-

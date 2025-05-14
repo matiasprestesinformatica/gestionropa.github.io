@@ -2,7 +2,7 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, ClothingItem } from '@/types';
+import type { SuggestedOutfit, OutfitItem, Prenda } from '@/types'; // Updated ClothingItem to Prenda
 import { placeholderOutfits } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
@@ -47,25 +47,25 @@ export async function getAISuggestionAction(
 }
 
 // --- Closet Management Actions ---
-
-const ClothingItemSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido."),
-  type: z.string().min(1, "El tipo es requerido."),
+// Updated Zod schema to use Spanish field names matching the 'prendas' table
+const PrendaSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido."),
+  tipo: z.string().min(1, "El tipo es requerido."),
   color: z.string().min(1, "El color es requerido."),
-  size: z.string().min(1, "La talla es requerida."),
-  season: z.string().min(1, "La temporada es requerida."),
-  occasion: z.string().min(1, "La ocasión es requerida."),
-  image_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
-  min_temp: z.coerce.number().optional().nullable(),
-  max_temp: z.coerce.number().optional().nullable(),
-  style: z.string().min(1, "El estilo es requerido."),
+  talla: z.string().min(1, "La talla es requerida."),
+  temporada: z.string().min(1, "La temporada es requerida."),
+  ocasion: z.string().min(1, "La ocasión es requerida."),
+  imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
+  temperatura_min: z.coerce.number().optional().nullable(),
+  temperatura_max: z.coerce.number().optional().nullable(),
+  estilo: z.string().min(1, "El estilo es requerido."),
 });
 
-export async function addClothingItemAction(formData: FormData): Promise<{ data?: ClothingItem; error?: string; validationErrors?: z.ZodIssue[] }> {
+export async function addPrendaAction(formData: FormData): Promise<{ data?: Prenda; error?: string; validationErrors?: z.ZodIssue[] }> {
   if (!supabase) return { error: "Supabase client not initialized." };
 
   const rawFormData = Object.fromEntries(formData.entries());
-  const validatedFields = ClothingItemSchema.safeParse(rawFormData);
+  const validatedFields = PrendaSchema.safeParse(rawFormData);
 
   if (!validatedFields.success) {
     return {
@@ -74,63 +74,63 @@ export async function addClothingItemAction(formData: FormData): Promise<{ data?
     };
   }
   
-  const { name, type, color, size, season, occasion, image_url, min_temp, max_temp, style } = validatedFields.data;
+  const { nombre, tipo, color, talla, temporada, ocasion, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
 
   const newItem = {
-    name,
-    type,
+    nombre,
+    tipo,
     color,
-    size,
-    season,
-    occasion,
-    image_url: image_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(name)}`,
-    min_temp,
-    max_temp,
-    style,
+    talla,
+    temporada,
+    ocasion,
+    imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
+    temperatura_min,
+    temperatura_max,
+    estilo,
     // user_id: session?.user?.id // Add this if using auth
   };
 
   try {
     const { data, error } = await supabase
-      .from('clothing_items')
+      .from('prendas') // Changed table name to 'prendas'
       .insert([newItem])
       .select()
-      .single(); // Assuming you want the inserted item back
+      .single();
 
     if (error) throw error;
 
     revalidatePath('/closet');
-    return { data: data as ClothingItem };
+    return { data: data as Prenda };
   } catch (error) {
-    console.error('Error adding clothing item:', error);
+    console.error('Error adding prenda:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while adding the item.';
     return { error: errorMessage };
   }
 }
 
-export async function getClothingItemsAction(): Promise<{ data?: ClothingItem[]; error?: string }> {
+export async function getPrendasAction(): Promise<{ data?: Prenda[]; error?: string }> {
   if (!supabase) return { error: "Supabase client not initialized.", data: [] };
   
   try {
     const { data, error } = await supabase
-      .from('clothing_items')
+      .from('prendas') // Changed table name to 'prendas'
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { data: data as ClothingItem[] };
+    return { data: data as Prenda[] };
   } catch (error) {
-    console.error('Error fetching clothing items:', error);
+    console.error('Error fetching prendas:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while fetching items.';
     return { error: errorMessage, data: [] };
   }
 }
 
-export async function updateClothingItemAction(itemId: string, formData: FormData): Promise<{ data?: ClothingItem; error?: string; validationErrors?: z.ZodIssue[] }> {
+export async function updatePrendaAction(itemId: string, formData: FormData): Promise<{ data?: Prenda; error?: string; validationErrors?: z.ZodIssue[] }> {
   if (!supabase) return { error: "Supabase client not initialized." };
 
   const rawFormData = Object.fromEntries(formData.entries());
-  const validatedFields = ClothingItemSchema.safeParse(rawFormData);
+  const validatedFields = PrendaSchema.safeParse(rawFormData);
 
   if (!validatedFields.success) {
     return {
@@ -139,24 +139,24 @@ export async function updateClothingItemAction(itemId: string, formData: FormDat
     };
   }
 
-  const { name, type, color, size, season, occasion, image_url, min_temp, max_temp, style } = validatedFields.data;
+  const { nombre, tipo, color, talla, temporada, ocasion, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
   
   const updatedItem = {
-    name,
-    type,
+    nombre,
+    tipo,
     color,
-    size,
-    season,
-    occasion,
-    image_url: image_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(name)}`,
-    min_temp,
-    max_temp,
-    style,
+    talla,
+    temporada,
+    ocasion,
+    imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
+    temperatura_min,
+    temperatura_max,
+    estilo,
   };
 
   try {
     const { data, error } = await supabase
-      .from('clothing_items')
+      .from('prendas') // Changed table name to 'prendas'
       .update(updatedItem)
       .eq('id', itemId)
       .select()
@@ -165,20 +165,20 @@ export async function updateClothingItemAction(itemId: string, formData: FormDat
     if (error) throw error;
 
     revalidatePath('/closet');
-    return { data: data as ClothingItem };
+    return { data: data as Prenda };
   } catch (error) {
-    console.error('Error updating clothing item:', error);
+    console.error('Error updating prenda:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while updating the item.';
     return { error: errorMessage };
   }
 }
 
-export async function deleteClothingItemAction(itemId: string): Promise<{ success?: boolean; error?: string }> {
+export async function deletePrendaAction(itemId: string): Promise<{ success?: boolean; error?: string }> {
   if (!supabase) return { error: "Supabase client not initialized." };
 
   try {
     const { error } = await supabase
-      .from('clothing_items')
+      .from('prendas') // Changed table name to 'prendas'
       .delete()
       .eq('id', itemId);
 
@@ -187,7 +187,7 @@ export async function deleteClothingItemAction(itemId: string): Promise<{ succes
     revalidatePath('/closet');
     return { success: true };
   } catch (error) {
-    console.error('Error deleting clothing item:', error);
+    console.error('Error deleting prenda:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while deleting the item.';
     return { error: errorMessage };
   }
