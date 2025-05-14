@@ -1,0 +1,9 @@
+id,created_at,nombre,tipo,color,talla,temporada,ocasion,imagen_url,temperatura_min,temperatura_max,estilo
+2c25b6d5-104c-4747-b36e-fd26f99cccaf,2025-05-14 22:57:24.952135+00,Camiseta Básica,Camisa,Blanco,M,Verano,Casual,https://placehold.co/200x300.png?text=Camiseta%20B%C3%A1sica,15,30,casual
+a1b2c3d4-5678-90ef-abcd-ef1234567890,2025-05-15 10:30:00.000000+00,Pantalón de Vestir,Pantalón,Negro,L,Invierno,Formal,https://placehold.co/200x300.png?text=Pantal%C3%B3n%20Vestir,5,15,formal
+f0e1d2c3-b4a5-6789-0123-456789abcdef,2025-05-15 11:45:10.123456+00,Zapatillas Deportivas,Zapatos,Azul,42,Todo el Año,Deportivo,https://placehold.co/200x300.png?text=Zapatillas,10,25,sporty
+c3d4e5f6-a7b8-c9d0-e1f2-a3b4c5d6e7f8,2025-05-16 08:15:00.000000+00,Vestido Bohemio,Vestido,Multicolor,S,Primavera,Casual,https://placehold.co/200x300.png?text=Vestido%20Bohemio,18,28,bohemian
+b9a8c7d6-f5e4-d3c2-b1a0-987654321fed,2025-05-16 14:20:30.500000+00,Chaqueta de Cuero,Chaqueta,Negro,M,Otoño,Casual,https://placehold.co/200x300.png?text=Chaqueta%20Cuero,10,20,casual
+d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6,2025-05-17 09:00:00.000000+00,Falda Plisada,Falda,Rosa,S,Verano,Fiesta,https://placehold.co/200x300.png?text=Falda%20Plisada,20,30,formal
+e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2,2025-05-17 16:55:05.789012+00,Suéter de Lana,Suéter,Gris,L,Invierno,Trabajo,https://placehold.co/200x300.png?text=Su%C3%A9ter%20Lana,0,12,casual
+12345678-9abc-def0-1234-56789abcdef0,2025-05-18 00:00:00.000000+00,Shorts Deportivos,Pantalón,Verde,M,Verano,Deportivo,https://placehold.co/200x300.png?text=Shorts%20Deportivos,20,35,sporty
