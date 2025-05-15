@@ -66,7 +66,11 @@ Estructura del directorio: /home/user/studio/src
         [looks/]
         [ui/]
         [wishlist/]
+        - ClosetFilterBar.tsx
+        - ClothingCard.tsx
         - ClothingForm.tsx
+        - ClothingTable.tsx
+        - GridCardsToggle.tsx
         - Header.tsx
         - OutfitSuggestion.tsx
         - StyleSelection.tsx

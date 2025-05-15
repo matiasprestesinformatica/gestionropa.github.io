@@ -1,7 +1,6 @@
 
-'use client';
-
 import * as React from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/ui/Navbar';
 import { Footer } from '@/components/ui/Footer';
@@ -10,13 +9,29 @@ import { ClothingForm, type PrendaFormData } from '@/components/ClothingForm';
 import { addPrendaAction, getPrendasAction, updatePrendaAction, deletePrendaAction } from '@/app/actions';
 import type { Prenda } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Loader2, AlertTriangle, PackageOpen } from 'lucide-react';
+import { PlusCircle, Loader2, AlertTriangle, PackageOpen, Search, X } from 'lucide-react';
 import { ClosetFilterBar, type ClosetFilters } from '@/components/ClosetFilterBar';
 import { GridCardsToggle, type ViewMode } from '@/components/GridCardsToggle';
 import { ClothingTable } from '@/components/ClothingTable';
 import { ClothingCard } from '@/components/ClothingCard';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
-export default function ClosetPage() {
+
+// This component contains the actual content and client-side logic for the closet page.
+// It's a client component because it uses useSearchParams and various useState/useEffect hooks.
+function ClosetPageContent() {
+  'use client';
+
   const [allItems, setAllItems] = React.useState<Prenda[]>([]);
   const [filteredItems, setFilteredItems] = React.useState<Prenda[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -31,6 +46,8 @@ export default function ClosetPage() {
     temporada: '',
   });
   const [viewMode, setViewMode] = React.useState<ViewMode>('grid');
+  const [itemToDelete, setItemToDelete] = React.useState<Prenda | null>(null);
+
 
   const { toast } = useToast();
   const searchParams = useSearchParams();
@@ -124,7 +141,11 @@ export default function ClosetPage() {
     return result;
   };
 
-  const handleDeleteItem = async (itemToDelete: Prenda) => {
+  const handleDeleteConfirmation = (item: Prenda) => {
+    setItemToDelete(item);
+  };
+
+  const executeDelete = async () => {
     if (!itemToDelete) return;
     const result = await deletePrendaAction(itemToDelete.id);
     if (result.error) {
@@ -133,6 +154,7 @@ export default function ClosetPage() {
       toast({ title: 'Éxito', description: 'Prenda eliminada correctamente.' });
       fetchItems(); // Refresh the list
     }
+    setItemToDelete(null);
   };
 
   const openEditForm = (item: Prenda) => {
@@ -200,17 +222,19 @@ export default function ClosetPage() {
             <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold text-foreground mb-2">No se encontraron prendas</h2>
             <p className="text-muted-foreground mb-4">Prueba ajustando los filtros o agregando nuevas prendas.</p>
-            <Button onClick={handleResetFilters} variant="outline">Limpiar Filtros</Button>
+            <Button onClick={handleResetFilters} variant="outline">
+                <X className="mr-2 h-4 w-4" /> Limpiar Filtros
+            </Button>
           </div>
         )}
         
         {!isLoading && !error && filteredItems.length > 0 && (
           viewMode === 'table' ? (
-            <ClothingTable items={filteredItems} onEditItem={openEditForm} onDeleteItem={handleDeleteItem} />
+            <ClothingTable items={filteredItems} onEditItem={openEditForm} onDeleteItem={handleDeleteConfirmation} />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
               {filteredItems.map(item => (
-                <ClothingCard key={item.id} item={item} onEdit={openEditForm} onDelete={handleDeleteItem} />
+                <ClothingCard key={item.id} item={item} onEdit={openEditForm} onDelete={handleDeleteConfirmation} />
               ))}
             </div>
           )
@@ -223,10 +247,50 @@ export default function ClosetPage() {
           initialData={editingItem}
           itemId={editingItem?.id}
         />
+
+        {itemToDelete && (
+          <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción no se puede deshacer. Esto eliminará permanentemente la prenda &quot;{itemToDelete.nombre}&quot;.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setItemToDelete(null)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={executeDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                  Eliminar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </main>
       <Footer />
     </div>
   );
 }
-// Need to add Search icon to imports if it's not already there for the empty filter state
-import { Search } from 'lucide-react';
+
+// Loading fallback for the Suspense boundary
+function ClosetPageLoading() {
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <Navbar />
+      <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="ml-4 text-lg text-muted-foreground">Cargando armario...</p>
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+// The default export for the page, which sets up the Suspense boundary
+export default function ClosetPage() {
+  return (
+    <Suspense fallback={<ClosetPageLoading />}>
+      <ClosetPageContent />
+    </Suspense>
+  );
+}
