@@ -35,24 +35,30 @@ export default function ArchivoPage() {
   }, [fetchArchivedItems]);
 
   const handleUnarchiveItem = async (item: Prenda) => {
-    // This assumes your updatePrendaAction can handle setting is_archived to false
-    // and that PrendaFormData can accept an is_archived field.
-    // For simplicity, creating a FormData-like object here.
     const formData = new FormData();
     Object.entries(item).forEach(([key, value]) => {
       if (key === 'is_archived') {
-        formData.append(key, 'false');
+        formData.append(key, 'false'); // Unarchive
       } else if (value !== undefined && value !== null) {
-         if (value instanceof Date) {
+         if (key === 'fechacompra' && typeof value === 'string' && value) {
+           // Ensure fechacompra is passed as a string if it's already a string
+           formData.append(key, value);
+         } else if (value instanceof Date) {
           formData.append(key, value.toISOString().split('T')[0]);
         } else if (typeof value === 'number') {
            formData.append(key, value.toString());
-        } else {
+        } else if (typeof value === 'boolean') { // handle other booleans if any
+           formData.append(key, String(value));
+        }
+         else {
           formData.append(key, String(value));
         }
       }
     });
     
+    // Explicitly set is_archived to false for the update
+    formData.set('is_archived', 'false');
+
     const result = await updatePrendaAction(item.id, formData);
     if (result.error) {
       toast({ title: "Error", description: `No se pudo restaurar "${item.nombre}". ${result.error}`, variant: "destructive" });
@@ -92,8 +98,9 @@ export default function ArchivoPage() {
                     <Image
                       src={item.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(item.nombre)}`}
                       alt={item.nombre}
-                      layout="fill"
-                      objectFit="cover"
+                      fill={true}
+                      sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className="object-cover"
                        data-ai-hint={`${item.tipo.toLowerCase()} ${item.color.toLowerCase()}`.substring(0,50)}
                     />
                   </div>

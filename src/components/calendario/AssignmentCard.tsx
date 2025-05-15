@@ -58,8 +58,9 @@ export function AssignmentCard({ assignment, onEdit, onDelete }: AssignmentCardP
           <Image
             src={imageUrl}
             alt={item.nombre}
-            layout="fill"
-            objectFit="cover"
+            fill={true}
+            sizes="320px" // max-w-xs is 20rem = 320px
+            className="object-cover"
              data-ai-hint={isPrenda ? `${item.tipo} ${item.color}` : item.estilo}
           />
         </div>
@@ -96,4 +97,3 @@ export function AssignmentCard({ assignment, onEdit, onDelete }: AssignmentCardP
     </Card>
   );
 }
-

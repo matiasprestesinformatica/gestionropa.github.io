@@ -18,9 +18,9 @@ function OutfitItemCard({ item }: { item: OutfitItem }) {
           <Image
             src={item.imageUrl}
             alt={item.name}
-            layout="fill"
-            objectFit="cover"
-            className="transition-transform duration-300 group-hover:scale-105"
+            fill={true}
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             data-ai-hint={item.aiHint}
           />
         </div>
@@ -38,9 +38,6 @@ function OutfitItemCard({ item }: { item: OutfitItem }) {
 
 export function OutfitSuggestion({ suggestion }: OutfitSuggestionProps) {
   if (!suggestion || !suggestion.items || suggestion.items.length === 0) {
-    // This case should ideally be handled by the parent component (HomePage)
-    // to not even render OutfitSuggestion if there's no valid suggestion.
-    // However, as a fallback:
     return (
       <Card className="shadow-lg rounded-xl mt-8">
         <CardHeader>
@@ -53,7 +50,6 @@ export function OutfitSuggestion({ suggestion }: OutfitSuggestionProps) {
     );
   }
   
-  // Extract unique colors from the suggested items
   const outfitColors = Array.from(new Set(suggestion.items.map(item => item.color).filter(Boolean) as string[]));
 
   return (
@@ -74,8 +70,9 @@ export function OutfitSuggestion({ suggestion }: OutfitSuggestionProps) {
               <Image
                 src={suggestion.previewImageUrl}
                 alt="Vista previa del atuendo"
-                layout="fill"
-                objectFit="cover"
+                fill={true}
+                sizes="100vw"
+                className="object-cover"
                 data-ai-hint="fashion outfit preview"
               />
             </div>

@@ -28,13 +28,13 @@ export function LookCard({ look, onEdit, onDelete }: LookCardProps) {
   return (
     <Card className="flex flex-col overflow-hidden shadow-lg rounded-xl hover:shadow-2xl transition-shadow duration-300 h-full bg-card">
       <CardHeader className="p-0 relative">
-        <div className="aspect-[4/3] w-full bg-muted overflow-hidden">
+        <div className="aspect-[4/3] w-full bg-muted overflow-hidden relative">
           <Image
             src={look.imagen_url || `https://placehold.co/400x300.png?text=${encodeURIComponent(look.nombre.substring(0,3))}`}
             alt={look.nombre}
-            layout="fill"
-            objectFit="cover"
-            className="transition-transform duration-300 group-hover:scale-105"
+            fill={true}
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             data-ai-hint={`look ${look.estilo || ''}`.trim()}
           />
         </div>

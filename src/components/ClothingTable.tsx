@@ -70,8 +70,9 @@ export function ClothingTable({ items, onEditItem, onDeleteItem }: ClothingTable
                     <Image
                       src={item.imagen_url || `https://placehold.co/64x64.png?text=${encodeURIComponent(item.nombre.substring(0,2))}`}
                       alt={item.nombre}
-                      layout="fill"
-                      objectFit="cover"
+                      fill={true}
+                      sizes="64px"
+                      className="object-cover"
                       data-ai-hint={`${item.tipo.toLowerCase()} ${item.color.toLowerCase()}`.substring(0,50)}
                     />
                   </div>

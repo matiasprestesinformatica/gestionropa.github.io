@@ -48,9 +48,9 @@ export function ClothingCard({ item, onEdit, onDelete }: ClothingCardProps) {
           <Image
             src={item.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(item.nombre.substring(0,2))}`}
             alt={item.nombre}
-            layout="fill"
-            objectFit="cover"
-            className="transition-transform duration-300 group-hover:scale-105"
+            fill={true}
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             data-ai-hint={`${item.tipo.toLowerCase()} ${item.color.toLowerCase()}`.substring(0,50)}
           />
         </div>

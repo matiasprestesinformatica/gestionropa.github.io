@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit, Trash2, CheckCircle, Circle, Archive, MoreVertical, ExternalLink } from 'lucide-react';
+import { Edit, Trash2, CheckCircle, Circle, Archive, MoreVertical, ExternalLink, Shirt } from 'lucide-react';
 import type { WishlistItem } from '@/types';
 
 interface WishlistItemCardProps {
@@ -43,9 +43,10 @@ export function WishlistItemCard({ item, onEdit, onDelete, onStatusChange }: Wis
             <Image
               src={item.imageUrl}
               alt={item.name}
-              layout="fill"
-              objectFit="cover"
-              data-ai-hint="fashion clothing"
+              fill={true}
+              sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+              className="object-cover"
+              data-ai-hint="fashion clothing wishlist"
             />
           ) : (
             <div className="flex items-center justify-center h-full">
