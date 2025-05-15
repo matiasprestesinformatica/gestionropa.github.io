@@ -34,8 +34,8 @@ import {
   Archive,
   ShoppingBag,
   ChevronDown,
-  Wand2, // Icon for Sugerencias dropdown
-  SlidersHorizontal, // Icon for Más Ajustes dropdown
+  Wand2, 
+  SlidersHorizontal, 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -177,15 +177,8 @@ export function Navbar() {
             </DropdownMenu>
           </div>
 
-          {/* Right side: Add Prenda Button and Mobile Menu Trigger */}
+          {/* Right side: Mobile Menu Trigger */}
           <div className="flex items-center gap-2">
-            <Button asChild className="hidden sm:inline-flex">
-              <Link href="/closet?action=add">
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Agregar Prenda
-              </Link>
-            </Button>
-
             {/* Mobile Menu Trigger */}
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -206,7 +199,7 @@ export function Navbar() {
                     </SheetClose>
                   </SheetHeader>
                   <div className="flex-grow py-4 px-2 space-y-1 overflow-y-auto">
-                    {allMobileNavLinks.map((link) => ( // Use the flattened list for mobile
+                    {allMobileNavLinks.map((link) => ( 
                       <SheetClose asChild key={link.label}>
                         <Link
                           href={link.href}
@@ -221,16 +214,6 @@ export function Navbar() {
                         </Link>
                       </SheetClose>
                     ))}
-                  </div>
-                   <div className="p-4 border-t border-border mt-auto">
-                     <SheetClose asChild>
-                      <Button asChild className="w-full">
-                        <Link href="/closet?action=add" onClick={() => setIsMobileMenuOpen(false)}>
-                           <PlusCircle className="mr-2 h-5 w-5" />
-                          Agregar Prenda
-                        </Link>
-                      </Button>
-                     </SheetClose>
                   </div>
                 </SheetContent>
               </Sheet>
