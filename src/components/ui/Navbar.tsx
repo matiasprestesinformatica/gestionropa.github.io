@@ -10,7 +10,7 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle,
+  SheetTitle, // Ensure SheetTitle is imported
   SheetTrigger,
   SheetClose,
 } from '@/components/ui/sheet';
@@ -26,15 +26,15 @@ import {
   Shirt,
   BarChart3,
   Settings,
-  Home,
-  Sparkles,
+  Sparkles, // Used for "Mis Looks"
   LayoutDashboard,
   CalendarDays,
   Archive,
-  ShoppingBag,
+  ShoppingBag, // Used for "Lista Deseos"
   ChevronDown,
   Wand2, 
-  SlidersHorizontal, 
+  SlidersHorizontal,
+  Home, // Used for "Sugerencias AI"
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -46,14 +46,14 @@ interface NavLinkItem {
 
 // Navigation structure
 const mainDesktopLinks: NavLinkItem[] = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard }, // Changed from /dashboard
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/closet', label: 'Armario', icon: Shirt },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
   { href: '/statistics', label: 'Estadísticas', icon: BarChart3 },
 ];
 
 const suggestionsDropdownItems: NavLinkItem[] = [
-  { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home }, // Changed from /
+  { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home },
   { href: '/looks', label: 'Mis Looks', icon: Sparkles },
 ];
 
@@ -65,8 +65,8 @@ const moreSettingsDropdownItems: NavLinkItem[] = [
 
 // Flattened list for mobile navigation
 const allMobileNavLinks: NavLinkItem[] = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard }, // Changed from /dashboard
-  { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home }, // Changed from /
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home },
   { href: '/closet', label: 'Armario', icon: Shirt },
   { href: '/looks', label: 'Mis Looks', icon: Sparkles },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
@@ -96,7 +96,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" aria-label="EstilosIA Home" className="flex items-center"> {/* Logo now links to / (new dashboard) */}
+            <Link href="/" aria-label="EstilosIA Home" className="flex items-center">
               <Logo className="h-8 w-auto" />
             </Link>
           </div>
@@ -187,9 +187,11 @@ export function Navbar() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 sm:w-80 bg-card p-0 flex flex-col">
                   <SheetHeader className="p-4 border-b border-border flex-row justify-between items-center">
-                     <Link href="/" onClick={() => setIsMobileMenuOpen(false)}> {/* Logo in mobile menu also links to / */}
-                        <Logo className="h-7 w-auto" />
-                     </Link>
+                     <SheetTitle asChild>
+                       <Link href="/" onClick={() => setIsMobileMenuOpen(false)} aria-label="EstilosIA Home">
+                          <Logo className="h-7 w-auto" />
+                       </Link>
+                     </SheetTitle>
                     <SheetClose asChild>
                       <Button variant="ghost" size="icon" aria-label="Cerrar menú">
                         <X className="h-6 w-6" />
