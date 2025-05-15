@@ -14,11 +14,13 @@ export interface OutfitItem {
   imageUrl: string;
   category: string; 
   aiHint: string; 
+  color?: string; // Optional: Add color to outfit items for ColorSwatch
 }
 
 export interface SuggestedOutfit {
   items: OutfitItem[];
   explanation: string;
+  previewImageUrl?: string; // Optional URL for a main preview image of the outfit
 }
 
 // --- Closet Management Types ---
@@ -30,12 +32,12 @@ export interface Prenda {
   color: string;
   modelo: string; 
   temporada: string;
-  fechacompra: string; // Represents purchase date as string, from DATE type in DB
+  fechacompra: string; 
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
   estilo: string;
-  is_archived?: boolean; // For archived items
+  is_archived?: boolean; 
 }
 
 export const CLOTHING_TYPES = ['Camisa', 'Pantalón', 'Vestido', 'Falda', 'Chaqueta', 'Suéter', 'Zapatos', 'Accesorio', 'Otro'] as const;
@@ -51,8 +53,8 @@ export interface Look {
   id: string;
   name: string;
   description?: string;
-  items: Prenda[]; // or OutfitItem[] if you prefer
-  imageUrl?: string; // A representative image for the look
+  items: Prenda[]; 
+  imageUrl?: string; 
   created_at: string;
 }
 
@@ -60,11 +62,11 @@ export interface Look {
 export interface CalendarEvent {
   id: string;
   date: Date;
-  title: string; // e.g., "Outfit del día"
+  title: string; 
   description?: string;
-  prendaIds?: number[]; // IDs of prendas used
-  prendas?: Prenda[]; // Full prenda objects
-  lookId?: string; // ID of a saved look used
+  prendaIds?: number[]; 
+  prendas?: Prenda[]; 
+  lookId?: string; 
   look?: Look;
 }
 
@@ -86,11 +88,20 @@ export type WishlistFormData = Omit<WishlistItem, 'id' | 'status' | 'added_at'>;
 export interface DashboardStats {
   totalPrendas: number;
   totalLooks: number;
-  // Add more stats as needed
 }
 
 export interface ColorFrequency {
   color: string;
   count: number;
-  fill: string; // For chart
+  fill: string; 
+}
+
+// --- HomePage Enhancement Types ---
+export interface HistoricalSuggestion {
+  id: string; // Unique ID, e.g., timestamp or a generated UUID
+  timestamp: number; // For sorting
+  temperature: [number, number];
+  selectedStyle: string;
+  useClosetInfo: boolean;
+  suggestion: SuggestedOutfit; // The actual suggestion (items, explanation)
 }

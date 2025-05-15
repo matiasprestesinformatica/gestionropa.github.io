@@ -9,12 +9,20 @@ import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea'; // Import Textarea
+import { Loader2, AlertTriangle, ClipboardCopy, MessageSquareText, Lightbulb, History as HistoryIcon } from 'lucide-react';
 import { getAISuggestionAction } from './actions';
-import type { SuggestedOutfit } from '@/types';
+import type { SuggestedOutfit, HistoricalSuggestion } from '@/types'; // Updated types
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { Footer } from '@/components/ui/Footer'; // Import Footer
+import { Footer } from '@/components/ui/Footer';
+import { OutfitExplanation } from '@/components/OutfitExplanation'; // New component
+import { SuggestionHistory } from '@/components/SuggestionHistory'; // New component
+import { InspirationCard } from '@/components/InspirationCard';   // New component
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // For Notes
+
+const LOCAL_STORAGE_HISTORY_KEY = 'estilosia_suggestion_history';
+const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_homepage';
 
 export default function HomePage() {
   const [temperature, setTemperature] = React.useState<[number, number]>([18, 22]);
@@ -23,8 +31,51 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [suggestion, setSuggestion] = React.useState<SuggestedOutfit | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  
+  const [suggestionHistory, setSuggestionHistory] = React.useState<HistoricalSuggestion[]>([]);
+  const [userNotes, setUserNotes] = React.useState<string>('');
 
   const { toast } = useToast();
+
+  // Load history and notes from localStorage on mount
+  React.useEffect(() => {
+    const storedHistory = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY);
+    if (storedHistory) {
+      try {
+        setSuggestionHistory(JSON.parse(storedHistory));
+      } catch (e) {
+        console.error("Failed to parse suggestion history from localStorage", e);
+        localStorage.removeItem(LOCAL_STORAGE_HISTORY_KEY); // Clear corrupted data
+      }
+    }
+    const storedNotes = localStorage.getItem(LOCAL_STORAGE_NOTES_KEY);
+    if (storedNotes) {
+      setUserNotes(storedNotes);
+    }
+  }, []);
+
+  const saveHistory = (history: HistoricalSuggestion[]) => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.error("Failed to save suggestion history to localStorage", e);
+      toast({
+        title: "Error de almacenamiento",
+        description: "No se pudo guardar el historial. Puede que el almacenamiento local esté lleno.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const saveNotes = (notes: string) => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_NOTES_KEY, notes);
+    } catch (e)
+    {
+      console.error("Failed to save notes to localStorage", e);
+    }
+  };
+
 
   const handleGetSuggestion = async () => {
     if (!selectedStyle) {
@@ -38,7 +89,8 @@ export default function HomePage() {
 
     setIsLoading(true);
     setError(null);
-    setSuggestion(null);
+    // Keep current suggestion while loading new one for smoother UX if desired, or set to null
+    // setSuggestion(null); 
 
     const result = await getAISuggestionAction({
       temperature,
@@ -48,6 +100,7 @@ export default function HomePage() {
 
     if ('error' in result) {
       setError(result.error);
+      setSuggestion(null); // Clear suggestion on error
       toast({
         title: 'Error al generar sugerencia',
         description: result.error,
@@ -55,54 +108,119 @@ export default function HomePage() {
       });
     } else {
       setSuggestion(result);
+      // Add to history
+      const newHistoryItem: HistoricalSuggestion = {
+        id: Date.now().toString(), // Simple unique ID
+        timestamp: Date.now(),
+        temperature,
+        selectedStyle,
+        useClosetInfo,
+        suggestion: result,
+      };
+      const updatedHistory = [newHistoryItem, ...suggestionHistory].slice(0, 10); // Keep last 10
+      setSuggestionHistory(updatedHistory);
+      saveHistory(updatedHistory);
     }
-
     setIsLoading(false);
+  };
+
+  const handleApplyHistoryItem = (historicalItem: HistoricalSuggestion) => {
+    setTemperature(historicalItem.temperature);
+    setSelectedStyle(historicalItem.selectedStyle);
+    setUseClosetInfo(historicalItem.useClosetInfo);
+    setSuggestion(historicalItem.suggestion);
+    setError(null); // Clear any previous errors
+    toast({ title: 'Sugerencia Aplicada', description: 'Se cargaron los parámetros y la sugerencia del historial.' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleClearHistory = () => {
+    setSuggestionHistory([]);
+    localStorage.removeItem(LOCAL_STORAGE_HISTORY_KEY);
+    toast({ title: 'Historial Limpiado', description: 'Se han eliminado todas las sugerencias guardadas.' });
+  };
+
+  const handleUserNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newNotes = event.target.value;
+    setUserNotes(newNotes);
+    saveNotes(newNotes);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <TemperatureControl value={temperature} onChange={setTemperature} />
-          <StyleSelection selectedStyle={selectedStyle} onStyleSelect={setSelectedStyle} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Columna Izquierda (Controles y Sugerencia) */}
+          <div className="lg:col-span-2 space-y-8">
+            <TemperatureControl value={temperature} onChange={setTemperature} />
+            <StyleSelection selectedStyle={selectedStyle} onStyleSelect={setSelectedStyle} />
 
-          <div className="flex items-center space-x-2 p-4 bg-card rounded-xl shadow-lg">
-            <Checkbox
-              id="useClosetInfo"
-              checked={useClosetInfo}
-              onCheckedChange={(checked) => setUseClosetInfo(Boolean(checked))}
-              aria-label="Usar información del armario"
-            />
-            <Label htmlFor="useClosetInfo" className="text-sm font-medium text-foreground cursor-pointer">
-              Personalizar con información de mi armario
-            </Label>
-          </div>
-          
-          <Separator />
-
-          <Button
-            onClick={handleGetSuggestion}
-            disabled={isLoading || !selectedStyle}
-            className="w-full py-3 text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
-            size="lg"
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              'Obtener Sugerencia de Atuendo'
-            )}
-          </Button>
-
-          {error && (
-            <div className="mt-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" />
-              <p className="text-sm font-medium">{error}</p>
+            <div className="flex items-center space-x-2 p-4 bg-card rounded-xl shadow-lg">
+              <Checkbox
+                id="useClosetInfo"
+                checked={useClosetInfo}
+                onCheckedChange={(checked) => setUseClosetInfo(Boolean(checked))}
+                aria-label="Usar información del armario"
+              />
+              <Label htmlFor="useClosetInfo" className="text-sm font-medium text-foreground cursor-pointer">
+                Personalizar con información de mi armario
+              </Label>
             </div>
-          )}
+            
+            <Button
+              onClick={handleGetSuggestion}
+              disabled={isLoading || !selectedStyle}
+              className="w-full py-3 text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+              size="lg"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                'Obtener Sugerencia de Atuendo'
+              )}
+            </Button>
 
-          {suggestion && <OutfitSuggestion suggestion={suggestion} />}
+            {error && (
+              <div className="mt-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
+
+            {suggestion && <OutfitSuggestion suggestion={suggestion} />}
+            {suggestion && <OutfitExplanation explanation={suggestion.explanation} />}
+
+            {/* User Notes Section */}
+            {suggestion && (
+                <Card className="shadow-lg rounded-xl mt-6">
+                    <CardHeader>
+                        <CardTitle className="flex items-center text-lg font-semibold">
+                            <MessageSquareText className="mr-2 h-5 w-5 text-primary" />
+                            Mis Notas sobre este Look
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Añade cualquier apunte o recordatorio sobre esta sugerencia.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Textarea
+                            placeholder="Ej: Perfecto para la cena del viernes, probar con otros zapatos..."
+                            value={userNotes}
+                            onChange={handleUserNotesChange}
+                            rows={4}
+                            className="resize-none"
+                        />
+                    </CardContent>
+                </Card>
+            )}
+          </div>
+
+          {/* Columna Derecha (Historial e Inspiración) */}
+          <div className="lg:col-span-1 space-y-8 lg:pt-0">
+            <SuggestionHistory history={suggestionHistory} onApplySuggestion={handleApplyHistoryItem} onClearHistory={handleClearHistory} />
+            <InspirationCard />
+          </div>
         </div>
       </main>
       <Footer />

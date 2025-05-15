@@ -1,8 +1,10 @@
+
 'use client';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import type { SuggestedOutfit, OutfitItem } from '@/types';
-import { Sparkles, Lightbulb } from 'lucide-react';
+import { Sparkles, Palette } from 'lucide-react';
+import { ColorSwatch } from './ColorSwatch'; // Import ColorSwatch
 
 interface OutfitSuggestionProps {
   suggestion: SuggestedOutfit;
@@ -10,7 +12,7 @@ interface OutfitSuggestionProps {
 
 function OutfitItemCard({ item }: { item: OutfitItem }) {
   return (
-    <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg">
+    <Card className="overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200 rounded-lg flex flex-col">
       <CardContent className="p-0">
         <div className="aspect-[3/4] relative w-full">
           <Image
@@ -23,10 +25,11 @@ function OutfitItemCard({ item }: { item: OutfitItem }) {
           />
         </div>
       </CardContent>
-      <CardFooter className="p-3 bg-card/80 backdrop-blur-sm">
+      <CardFooter className="p-3 bg-card/80 backdrop-blur-sm mt-auto">
         <div>
-          <p className="font-semibold text-sm text-foreground truncate">{item.name}</p>
-          <p className="text-xs text-muted-foreground">{item.category}</p>
+          <p className="font-semibold text-sm text-foreground truncate" title={item.name}>{item.name}</p>
+          <p className="text-xs text-muted-foreground mb-1">{item.category}</p>
+          {item.color && <ColorSwatch colorName={item.color} />}
         </div>
       </CardFooter>
     </Card>
@@ -34,7 +37,10 @@ function OutfitItemCard({ item }: { item: OutfitItem }) {
 }
 
 export function OutfitSuggestion({ suggestion }: OutfitSuggestionProps) {
-  if (!suggestion.items || suggestion.items.length === 0) {
+  if (!suggestion || !suggestion.items || suggestion.items.length === 0) {
+    // This case should ideally be handled by the parent component (HomePage)
+    // to not even render OutfitSuggestion if there's no valid suggestion.
+    // However, as a fallback:
     return (
       <Card className="shadow-lg rounded-xl mt-8">
         <CardHeader>
@@ -46,6 +52,9 @@ export function OutfitSuggestion({ suggestion }: OutfitSuggestionProps) {
       </Card>
     );
   }
+  
+  // Extract unique colors from the suggested items
+  const outfitColors = Array.from(new Set(suggestion.items.map(item => item.color).filter(Boolean) as string[]));
 
   return (
     <div className="mt-8 space-y-6">
@@ -55,28 +64,37 @@ export function OutfitSuggestion({ suggestion }: OutfitSuggestionProps) {
             <Sparkles className="mr-2 h-6 w-6 text-primary" />
             Tu Atuendo Sugerido
           </CardTitle>
-          <CardDescription>Basado en tus preferencias de temperatura y estilo.</CardDescription>
+          {suggestion.previewImageUrl && (
+             <CardDescription>Una vista previa de tu look.</CardDescription>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {suggestion.previewImageUrl && (
+            <div className="mb-6 aspect-video relative w-full rounded-lg overflow-hidden shadow-md">
+              <Image
+                src={suggestion.previewImageUrl}
+                alt="Vista previa del atuendo"
+                layout="fill"
+                objectFit="cover"
+                data-ai-hint="fashion outfit preview"
+              />
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
             {suggestion.items.map((item) => (
               <OutfitItemCard key={item.id} item={item} />
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-lg rounded-xl bg-accent/30 border-accent">
-        <CardHeader>
-          <CardTitle className="flex items-center text-lg font-semibold text-accent-foreground">
-            <Lightbulb className="mr-2 h-5 w-5 text-accent-foreground/80" />
-            Explicación Inteligente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-accent-foreground/90 leading-relaxed whitespace-pre-wrap">
-            {suggestion.explanation}
-          </p>
+          {outfitColors.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center">
+                <Palette className="mr-2 h-4 w-4" /> Paleta de Colores:
+              </h4>
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                {outfitColors.map(color => <ColorSwatch key={color} colorName={color} />)}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
