@@ -3,11 +3,11 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet';
-import { Menu, X, Shirt, BarChart3, Settings, Home, Sparkles, PlusCircle } from 'lucide-react';
+import { Menu, X, Shirt, BarChart3, Settings, Home, Sparkles, PlusCircle, LayoutDashboard, CalendarDays, Archive, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavLinkItem {
@@ -17,11 +17,15 @@ interface NavLinkItem {
 }
 
 const navLinks: NavLinkItem[] = [
-  { href: '/', label: 'Inicio', icon: Home },
+  { href: '/', label: 'Sugerencias', icon: Home }, // Changed from Inicio to Sugerencias for clarity
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/closet', label: 'Armario', icon: Shirt },
   { href: '/looks', label: 'Looks', icon: Sparkles },
+  { href: '/calendario', label: 'Calendario', icon: CalendarDays },
+  { href: '/archivo', label: 'Archivo', icon: Archive },
+  { href: '/deseos', label: 'Lista Deseos', icon: ShoppingBag },
   { href: '/statistics', label: 'Estadísticas', icon: BarChart3 },
-  { href: '/settings', label: 'Configuración', icon: Settings },
+  { href: '/configuracion', label: 'Configuración', icon: Settings },
 ];
 
 export function Navbar() {
@@ -30,7 +34,9 @@ export function Navbar() {
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === href;
-    return pathname.startsWith(href);
+    // For dashboard, ensure exact match, otherwise /closet would also match /
+    if (href === '/dashboard') return pathname === href;
+    return pathname.startsWith(href) && href !== '/';
   };
 
   return (
