@@ -76,7 +76,7 @@ export async function getAISuggestionAction(
       id: p.id.toString(),
       name: p.nombre,
       imageUrl: p.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(p.nombre)}`,
-      category: p.tipo as string, // Assuming TipoPrenda will be a string here
+      category: p.tipo as string, 
       color: p.color,
       aiHint: `${p.tipo.toLowerCase()} ${p.color ? p.color.toLowerCase() : ''}`.trim().substring(0,50) || p.nombre.toLowerCase(),
     }));
@@ -106,7 +106,7 @@ export async function getAISuggestionAction(
 
 const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
-  tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { errorMap: () => ({ message: "Por favor selecciona un tipo válido." }) }),
+  tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { required_error: "Por favor selecciona un tipo válido."}),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
   modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
@@ -149,7 +149,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     color,
     modelo,
     temporada,
-    fechacompra: fechacompra || null,
+    fechacompra: fechacompra || null, // Will be saved as 'YYYY-MM-DD' or null if empty
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -167,7 +167,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // For dashboard
+    revalidatePath('/'); 
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -244,7 +244,7 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // For dashboard
+    revalidatePath('/'); 
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -270,7 +270,7 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // For dashboard
+    revalidatePath('/');
     revalidatePath('/archivo');
     revalidatePath('/looks');
     revalidatePath('/calendario');
@@ -543,8 +543,8 @@ export async function getCalendarAssignmentsAction(
         } as LookCalendarAssignment;
       }
       console.warn("Found assignment without valid prenda or look reference:", assignment.id)
-      return { ...assignment, fecha: assignment.fecha, prenda: null, look: null }; // Should not happen due to DB constraint
-    }).filter(Boolean) as CalendarAssignment[]; // Filter out any malformed assignments
+      return { ...assignment, fecha: assignment.fecha, prenda: null, look: null }; 
+    }).filter(Boolean) as CalendarAssignment[]; 
     return { data: formattedAssignments };
   } catch (error) {
     console.error('Error fetching calendar assignments:', error);
@@ -723,14 +723,12 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
 
     const { data: stylesData, error: stylesError } = await supabase
       .from('prendas')
-      .select('estilo', { count: 'exact' }) // This counts distinct styles, not total prendas per style.
+      .select('estilo') 
       .eq('is_archived', false)
-      .neq('estilo', ''); // Ensure estilo is not an empty string
+      .neq('estilo', ''); 
 
     if (stylesError) throw stylesError;
-    // Correctly count distinct styles. If stylesData is an array of {estilo: 'styleName'}, then Set is good.
-    // If it's a count of distinct styles already, then use that. Supabase count might be different.
-    // Assuming stylesData is [{estilo: 'casual'}, {estilo: 'formal'}, {estilo: 'casual'}]
+    
     const prendasPorEstiloCount = new Set(stylesData.map(s => s.estilo)).size;
 
 
@@ -764,53 +762,63 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
 
 
 const PRENDA_COLOR_MAP: Record<string, string> = {
-  'Rojo': 'hsl(0, 72%, 51%)',
-  'Azul': 'hsl(217, 91%, 60%)',
-  'Verde': 'hsl(142, 71%, 45%)',
-  'Amarillo': 'hsl(48, 96%, 53%)',
-  'Negro': 'hsl(0, 0%, 0%)',
-  'Blanco': 'hsl(0, 0%, 95%)', // Slightly off-white for visibility on white bg
-  'Gris': 'hsl(215, 14%, 65%)',
-  'Marrón': 'hsl(30, 47%, 40%)',
-  'Naranja': 'hsl(25, 95%, 53%)',
-  'Violeta': 'hsl(271, 76%, 53%)',
-  'Rosa': 'hsl(339, 82%, 60%)',
-  'Beige': 'hsl(39, 53%, 82%)',
-  'Celeste': 'hsl(197, 71%, 73%)',
-  'Dorado': 'hsl(45, 89%, 55%)',
-  'Plateado': 'hsl(210, 17%, 79%)',
-  'Cian': 'hsl(180, 70%, 50%)', // Adjusted for better visibility
-  'Magenta': 'hsl(300, 76%, 58%)', // Adjusted
-  'Lima': 'hsl(80, 61%, 60%)', // Adjusted
-  'Oliva': 'hsl(60, 39%, 41%)',
-  'Turquesa': 'hsl(174, 72%, 56%)',
-  'Índigo': 'hsl(240, 50%, 45%)', // Adjusted
-  'Salmón': 'hsl(6, 93%, 71%)',
-  'Coral': 'hsl(16, 100%, 63%)',
-  'Lavanda': 'hsl(256, 60%, 75%)',
-  'Menta': 'hsl(150, 54%, 67%)',
-  'Caqui': 'hsl(39, 31%, 56%)',
-  'Borgoña': 'hsl(348, 70%, 40%)',
-  'Fucsia': 'hsl(327, 100%, 54%)',
+  'Rojo': 'hsl(0, 72%, 51%)',       // Red
+  'Azul': 'hsl(217, 91%, 60%)',    // Blue
+  'Verde': 'hsl(142, 71%, 45%)',   // Green
+  'Amarillo': 'hsl(48, 96%, 53%)', // Yellow
+  'Negro': 'hsl(0, 0%, 10%)',      // Dark Gray/Near Black for visibility
+  'Blanco': 'hsl(0, 0%, 98%)',     // Off-white for visibility
+  'Gris': 'hsl(215, 14%, 65%)',    // Gray
+  'Marrón': 'hsl(30, 47%, 40%)',   // Brown
+  'Naranja': 'hsl(25, 95%, 53%)',  // Orange
+  'Violeta': 'hsl(271, 76%, 53%)', // Violet
+  'Rosa': 'hsl(339, 82%, 60%)',    // Pink
+  'Beige': 'hsl(39, 53%, 82%)',    // Beige
+  'Celeste': 'hsl(197, 71%, 73%)', // Light Blue
+  'Dorado': 'hsl(45, 89%, 55%)',   // Gold
+  'Plateado': 'hsl(210, 17%, 79%)',// Silver
+  'Cian': 'hsl(180, 70%, 50%)',    // Cyan
+  'Magenta': 'hsl(300, 76%, 58%)',// Magenta
+  'Lima': 'hsl(80, 61%, 60%)',     // Lime
+  'Oliva': 'hsl(60, 39%, 41%)',    // Olive
+  'Turquesa': 'hsl(174, 72%, 56%)',// Turquoise
+  'Índigo': 'hsl(240, 50%, 45%)',   // Indigo
+  'Salmón': 'hsl(6, 93%, 71%)',    // Salmon
+  'Coral': 'hsl(16, 100%, 63%)',   // Coral
+  'Lavanda': 'hsl(256, 60%, 75%)', // Lavender
+  'Menta': 'hsl(150, 54%, 67%)',   // Mint
+  'Caqui': 'hsl(39, 31%, 56%)',    // Khaki
+  'Borgoña': 'hsl(348, 70%, 40%)', // Burgundy
+  'Fucsia': 'hsl(327, 100%, 54%)', // Fuchsia
   // 'Cuadrille', 'Estampado', 'Multicolor', 'Otro' will use fallback chart colors
 };
 
 
 export async function getColorDistributionStatsAction(): Promise<{ data?: ColorFrequency[]; error?: string }> {
-  if (!supabase) return { error: "Error de conexión con la base de datos." };
+  if (!supabase) {
+    console.error("Supabase client is not initialized for getColorDistributionStatsAction.");
+    return { error: "Error de conexión con la base de datos." };
+  }
   try {
     const { data: prendas, error } = await supabase
       .from('prendas')
       .select('color')
       .eq('is_archived', false)
-      .neq('color', ''); // Ensure color is not an empty string
+      .not('color', 'is', null) // Ensure color is not null
+      .neq('color', '');         // Ensure color is not an empty string if it's text based
 
-    if (error) throw error;
-    if (!prendas) return { data: [] };
+    if (error) {
+      console.error("Supabase error in getColorDistributionStatsAction fetching prendas:", error);
+      throw error;
+    }
+    if (!prendas) {
+      console.warn("No prendas data returned from Supabase in getColorDistributionStatsAction.");
+      return { data: [] };
+    }
 
     const colorCounts: Record<string, number> = {};
     prendas.forEach(p => {
-      if (p.color) { // p.color is already the ENUM value which is a string
+      if (p.color) { 
         colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
       }
     });
@@ -819,22 +827,22 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
     let fallbackIndex = 0;
 
     const colorFrequencyData: ColorFrequency[] = Object.entries(colorCounts)
-      .filter(([, count]) => count > 0) // Only include colors with count > 0
+      .filter(([, count]) => count > 0) 
       .map(([color, count]) => {
         let fill = PRENDA_COLOR_MAP[color];
-        if (!fill) { // Fallback for colors not in our specific map (e.g., "Estampado", "Otro")
+        if (!fill) { 
           fill = chartColorsFallback[fallbackIndex % chartColorsFallback.length];
           fallbackIndex++;
         }
-        // For white, add a border to the chart cell for visibility if the chart background is white
+        // Ensure 'Blanco' has a visible border or slightly off-white color for charts if needed
         if (color === 'Blanco') { 
-            // The component itself will handle the border styling for the "Blanco" slice based on its fill.
-            // Here, we just ensure the fill is recognizable as white.
-            fill = 'hsl(0, 0%, 100%)';
+            // Using a very light gray for 'Blanco' so it's visible on white chart backgrounds
+            // Or ensure your chart component adds a border to the 'Blanco' slice.
+             fill = 'hsl(0, 0%, 95%)'; // Slightly off-white
         }
         return { color, count, fill };
       })
-      .sort((a, b) => b.count - a.count); // Sort by count descending
+      .sort((a, b) => b.count - a.count); 
 
     return { data: colorFrequencyData };
   } catch (error) {
@@ -845,21 +853,31 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
 
 
 export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageStat[]; error?: string }> {
-  if (!supabase) return { error: "Error de conexión con la base de datos." };
+  if (!supabase) {
+    console.error("Supabase client is not initialized for getStyleUsageStatsAction.");
+    return { error: "Error de conexión con la base de datos." };
+  }
   try {
     const { data: prendas, error } = await supabase
       .from('prendas')
       .select('estilo')
       .eq('is_archived', false)
-      .neq('estilo', '');
+      .not('estilo', 'is', null) // Ensure estilo is not null
+      .neq('estilo', '');        // Ensure estilo is not an empty string
 
-    if (error) throw error;
-    if (!prendas) return { data: [] };
+    if (error) {
+        console.error("Supabase error in getStyleUsageStatsAction fetching prendas:", error);
+        throw error;
+    }
+    if (!prendas) {
+        console.warn("No prendas data returned from Supabase in getStyleUsageStatsAction.");
+        return { data: [] };
+    }
 
     const styleCounts: Record<string, number> = {};
     prendas.forEach(p => {
       if (p.estilo) {
-        const styleKey = p.estilo.charAt(0).toUpperCase() + p.estilo.slice(1); // Capitalize
+        const styleKey = p.estilo.charAt(0).toUpperCase() + p.estilo.slice(1); 
         styleCounts[styleKey] = (styleCounts[styleKey] || 0) + 1;
       }
     });
@@ -878,7 +896,10 @@ export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageSta
 }
 
 export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise<{ data?: TimeActivityStat[]; error?: string }> {
-  if (!supabase) return { error: "Error de conexión con la base de datos." };
+  if (!supabase) {
+    console.error("Supabase client is not initialized for getTimeActivityStatsAction.");
+    return { error: "Error de conexión con la base de datos." };
+  }
   try {
     const today = new Date();
     const activityData: Record<string, number> = {};
@@ -896,15 +917,21 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
 
     const { data, error } = await supabase
       .from('calendario_asignaciones')
-      .select('fecha, tipo_asignacion') // Only select what's needed
+      .select('fecha, tipo_asignacion') 
       .gte('fecha', startDate)
       .lte('fecha', endDate);
 
-    if (error) throw error;
-    if (!data) return {data: []};
+    if (error) {
+        console.error("Supabase error in getTimeActivityStatsAction fetching assignments:", error);
+        throw error;
+    }
+    if (!data) {
+        console.warn("No assignments data returned from Supabase in getTimeActivityStatsAction.");
+        return {data: []};
+    }
 
     data.forEach(assignment => {
-      const assignmentDate = parseISO(assignment.fecha); // fecha is 'YYYY-MM-DD'
+      const assignmentDate = parseISO(assignment.fecha); 
       const monthKey = format(assignmentDate, 'MMM yy', { locale: es });
       if (activityData.hasOwnProperty(monthKey)) {
         activityData[monthKey]++;
@@ -915,7 +942,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
     const timeActivityStats: TimeActivityStat[] = monthLabels.map((label, index) => ({
       date: label,
       count: activityData[label] || 0,
-      fill: chartColors[index % chartColors.length] // Assign fill color here
+      fill: chartColors[index % chartColors.length] 
     }));
 
     return { data: timeActivityStats };
@@ -926,7 +953,10 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
 }
 
 export async function getIntelligentInsightDataAction(): Promise<{data?: IntelligentInsightData; error?: string}> {
-    if (!supabase) return { error: "Error de conexión con la base de datos." };
+    if (!supabase) {
+        console.error("Supabase client is not initialized for getIntelligentInsightDataAction.");
+        return { error: "Error de conexión con la base de datos." };
+    }
     try {
         const styleStatsResult = await getStyleUsageStatsAction();
         if (styleStatsResult.error || !styleStatsResult.data) {
@@ -943,10 +973,10 @@ export async function getIntelligentInsightDataAction(): Promise<{data?: Intelli
         let dominantStyle: { name: string; percentage: number } | undefined = undefined;
 
         if (totalPrendasConEstilo > 0 && styleStatsResult.data.length > 0) {
-            const mostUsedStyle = styleStatsResult.data[0]; // styleStatsResult.data is already sorted
-            if (mostUsedStyle.value > 0) { // Ensure the most used style actually has prendas
+            const mostUsedStyle = styleStatsResult.data[0]; 
+            if (mostUsedStyle.value > 0) { 
               const percentage = (mostUsedStyle.value / totalPrendasConEstilo) * 100;
-              if (percentage > 50) { // Consider it dominant if over 50% of prendas with style
+              if (percentage > 50) { 
                   dominantStyle = { name: mostUsedStyle.name, percentage: Math.round(percentage) };
               }
             }
@@ -959,3 +989,5 @@ export async function getIntelligentInsightDataAction(): Promise<{data?: Intelli
         return { error: error instanceof Error ? error.message : 'Error al generar la información inteligente.' };
     }
 }
+
+    
