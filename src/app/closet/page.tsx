@@ -4,7 +4,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { Navbar } from '@/components/ui/Navbar'; // Changed from AppHeader
+import { Navbar } from '@/components/ui/Navbar';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -31,6 +31,7 @@ import { addPrendaAction, getPrendasAction, updatePrendaAction, deletePrendaActi
 import type { Prenda } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, PackageOpen } from 'lucide-react';
+import { Footer } from '@/components/ui/Footer'; // Import Footer
 
 export default function ClosetPage() {
   const [items, setItems] = React.useState<Prenda[]>([]); 
@@ -73,7 +74,10 @@ export default function ClosetPage() {
       if (value !== undefined && value !== null) {
         if (value instanceof Date) {
           formData.append(key, value.toISOString().split('T')[0]);
-        } else {
+        } else if (typeof value === 'number') {
+          formData.append(key, value.toString());
+        }
+         else {
           formData.append(key, String(value));
         }
       }
@@ -113,7 +117,7 @@ export default function ClosetPage() {
   
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navbar /> {/* Changed from AppHeader */}
+      <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Mi Armario</h1>
@@ -189,7 +193,7 @@ export default function ClosetPage() {
                     <TableCell>{item.color}</TableCell>
                     <TableCell>{item.modelo}</TableCell>
                     <TableCell>{item.estilo}</TableCell>
-                    <TableCell>{item.fechacompra}</TableCell>
+                    <TableCell>{item.fechacompra ? new Date(item.fechacompra + 'T00:00:00').toLocaleDateString() : '-'}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openEditForm(item)} className="mr-2 hover:text-primary">
                         <Edit className="h-4 w-4" />
@@ -235,9 +239,7 @@ export default function ClosetPage() {
           itemId={editingItem?.id}
         />
       </main>
-       <footer className="py-6 text-center text-sm text-muted-foreground border-t">
-        © {new Date().getFullYear()} EstilosIA. Gestión de Armario.
-      </footer>
+      <Footer />
     </div>
   );
 }

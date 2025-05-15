@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { Navbar } from '@/components/ui/Navbar'; // Changed from AppHeader
+import { Navbar } from '@/components/ui/Navbar';
 import { TemperatureControl } from '@/components/TemperatureControl';
 import { StyleSelection } from '@/components/StyleSelection';
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
@@ -14,11 +14,12 @@ import { getAISuggestionAction } from './actions';
 import type { SuggestedOutfit } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
+import { Footer } from '@/components/ui/Footer'; // Import Footer
 
 export default function HomePage() {
   const [temperature, setTemperature] = React.useState<[number, number]>([18, 22]);
   const [selectedStyle, setSelectedStyle] = React.useState<string | null>('casual');
-  const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(true); // Default to true as per PRD
+  const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(true);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [suggestion, setSuggestion] = React.useState<SuggestedOutfit | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -61,7 +62,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <Navbar /> {/* Changed from AppHeader */}
+      <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto space-y-8">
           <TemperatureControl value={temperature} onChange={setTemperature} />
@@ -104,9 +105,7 @@ export default function HomePage() {
           {suggestion && <OutfitSuggestion suggestion={suggestion} />}
         </div>
       </main>
-      <footer className="py-6 text-center text-sm text-muted-foreground border-t">
-        © {new Date().getFullYear()} EstilosIA. Todos los derechos reservados.
-      </footer>
+      <Footer />
     </div>
   );
 }
