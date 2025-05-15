@@ -11,8 +11,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { supabase } from '@/lib/supabaseClient'; // Import supabase client
-import { mapDbPrendaToClient } from '@/lib/dataMappers'; // Import mapper
+import { supabase } from '@/lib/supabaseClient';
+import { mapDbPrendaToClient } from '@/lib/dataMappers';
 import type { Prenda } from '@/types';
 
 const GenerateOutfitExplanationInputSchema = z.object({
@@ -49,7 +49,8 @@ const getUserClosetInformation = ai.defineTool(
   },
   async (input) => {
     if (!supabase) {
-      return { closetSummary: "Could not access closet information due to a database connection issue." };
+      console.error("Supabase client is not initialized in getUserClosetInformation tool. Check environment variables.");
+      return { closetSummary: "No se pudo acceder a la información del armario debido a un problema de conexión con la base de datos." };
     }
     try {
       const { data: dbData, error: dbError } = await supabase
@@ -57,16 +58,16 @@ const getUserClosetInformation = ai.defineTool(
         .select('*')
         .eq('estilo', input.style.toLowerCase()) // Filter by style
         .filter('is_archived', 'is', false); // Exclude archived items
-        
+
       if (dbError) {
         console.error("Supabase error fetching prendas for tool:", dbError);
-        return { closetSummary: "Could not retrieve closet information at this time due to a database error." };
+        return { closetSummary: "No se pudo obtener la información del armario en este momento debido a un error de la base de datos." };
       }
 
       const allPrendas: Prenda[] = dbData.map(mapDbPrendaToClient);
 
       if (allPrendas.length === 0) {
-        return { closetSummary: `The user's closet has no items matching the ${input.style} style or they are all archived.` };
+        return { closetSummary: `El armario del usuario no tiene artículos que coincidan con el estilo ${input.style} o están todos archivados.` };
       }
 
       const tempMatch = input.temperatureRange.match(/(-?\d+)\s*-\s*(-?\d+)/);
@@ -80,7 +81,7 @@ const getUserClosetInformation = ai.defineTool(
       const relevantPrendas = allPrendas.filter(p => {
         let tempCondition = true;
         if (minTemp !== null && maxTemp !== null && typeof p.temperatura_min === 'number' && typeof p.temperatura_max === 'number') {
-          tempCondition = 
+          tempCondition =
             p.temperatura_min <= maxTemp &&
             p.temperatura_max >= minTemp;
         }
@@ -88,7 +89,7 @@ const getUserClosetInformation = ai.defineTool(
       });
 
       if (relevantPrendas.length === 0) {
-        return { closetSummary: `No specific items found in the user's closet that closely match the ${input.style} style for the ${input.temperatureRange} range, beyond the items already suggested.` };
+        return { closetSummary: `No se encontraron artículos específicos en el armario del usuario que coincidan estrechamente con el estilo ${input.style} para el rango de ${input.temperatureRange}, más allá de los artículos ya sugeridos.` };
       }
 
       const typeCounts: Record<string, number> = {};
@@ -104,16 +105,16 @@ const getUserClosetInformation = ai.defineTool(
           summaryParts.push(`algunas ${type.toLowerCase()}s`);
         }
       }
-      
+
       if (summaryParts.length === 0) {
-         return { closetSummary: `The user has items in the ${input.style} style suitable for various conditions, complementing the current suggestion.`};
+         return { closetSummary: `El usuario tiene artículos en el estilo ${input.style} adecuados para diversas condiciones, complementando la sugerencia actual.`};
       }
 
-      return { closetSummary: `For the ${input.style} style and temperature range of ${input.temperatureRange}, the user's closet also includes ${summaryParts.join(', y ')}. This suggests the suggested outfit can be well integrated.` };
+      return { closetSummary: `Para el estilo ${input.style} y el rango de temperatura de ${input.temperatureRange}, el armario del usuario también incluye ${summaryParts.join(', y ')}. Esto sugiere que el atuendo sugerido puede integrarse bien.` };
 
     } catch (error) {
       console.error("Error in getUserClosetInformation tool:", error);
-      return { closetSummary: "An error occurred while trying to access closet information." };
+      return { closetSummary: "Ocurrió un error al intentar acceder a la información del armario." };
     }
   }
 );

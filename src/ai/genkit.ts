@@ -1,34 +1,44 @@
 
 import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
-// import {isDev} from "genkit/dev_internal"; // Not typically needed for basic setup
 
-let aiInstance: any; // Use 'any' to allow for undefined in case of critical failure
+let aiInstance: any;
+let googleAiPluginInstance: any;
 
 try {
+  console.log("[Genkit] Attempting to instantiate googleAI() plugin...");
   // The googleAI() plugin will automatically look for GEMINI_API_KEY in process.env
-  aiInstance = genkit({
-    plugins: [
-      googleAI(),
-    ],
-    // The 'model' option is generally not part of the top-level genkit() constructor in v1.x.
-    // Models are typically specified in ai.generate() calls or when defining specific model instances.
-    // model: 'googleai/gemini-2.0-flash', 
-  });
-} catch (e: any) {
-  // Log a more detailed error to help diagnose issues during build or runtime
+  googleAiPluginInstance = googleAI();
+  console.log("[Genkit] googleAI() plugin instantiated successfully.");
+} catch (pluginError: any) {
   console.error(
-    "CRITICAL: Failed to initialize Genkit AI. This might be due to missing or invalid API keys (e.g., GEMINI_API_KEY), network issues, or plugin configuration errors.",
-    "Error Details:", e.message, 
-    "Stack:", e.stack
+    "CRITICAL GENKIT PLUGIN ERROR: Failed to INSTANTIATE googleAI() plugin. This often means GEMINI_API_KEY is missing, invalid, or inaccessible in the build environment.",
+    "Plugin Error Type:", Object.prototype.toString.call(pluginError),
+    "Plugin Error Message:", pluginError?.message,
+    "Plugin Error Stack:", pluginError?.stack
   );
-  // Re-throw the error to ensure the build process or application startup
-  // fails clearly if AI initialization is a critical problem.
-  // For "Cannot find module for page" errors, sometimes allowing 'aiInstance' to be undefined
-  // can help the build pass, but it's better to fix the root cause.
-  // If an invalid option here causes genkit() to throw, this catch will handle it.
-  throw new Error(`Genkit initialization failed: ${e.message || String(e)}`);
+  googleAiPluginInstance = null; // Ensure it's null so Genkit initialization is skipped
+}
+
+if (googleAiPluginInstance) {
+  try {
+    console.log("[Genkit] Attempting to initialize Genkit core with the googleAI plugin...");
+    aiInstance = genkit({
+      plugins: [googleAiPluginInstance],
+    });
+    console.log("[Genkit] Genkit core initialized successfully with the googleAI plugin.");
+  } catch (genkitInitError: any) {
+    console.error(
+      "CRITICAL GENKIT CORE ERROR: Genkit core initialization FAILED with the googleAI plugin. This could be due to Genkit core issues or deeper plugin integration problems.",
+      "Genkit Init Error Type:", Object.prototype.toString.call(genkitInitError),
+      "Genkit Init Error Message:", genkitInitError?.message,
+      "Genkit Init Error Stack:", genkitInitError?.stack
+    );
+    aiInstance = undefined; // Ensure aiInstance is undefined on error
+  }
+} else {
+  console.warn("[Genkit] Genkit core initialization SKIPPED because the googleAI plugin could not be instantiated.");
+  aiInstance = undefined;
 }
 
 export const ai = aiInstance;
-
