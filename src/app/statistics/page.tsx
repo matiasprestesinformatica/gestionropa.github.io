@@ -31,24 +31,41 @@ export default function StatisticsPage() {
   const [insightData, setInsightData] = React.useState<IntelligentInsightData | null>(null);
   
   const [isLoadingSummary, setIsLoadingSummary] = React.useState(true);
+  const [summaryError, setSummaryError] = React.useState<string | null>(null);
+  
   const [isLoadingColors, setIsLoadingColors] = React.useState(true);
+  const [colorsError, setColorsError] = React.useState<string | null>(null);
+  
   const [isLoadingStyles, setIsLoadingStyles] = React.useState(true);
+  const [stylesError, setStylesError] = React.useState<string | null>(null);
+  
   const [isLoadingActivity, setIsLoadingActivity] = React.useState(true);
+  const [activityError, setActivityError] = React.useState<string | null>(null);
+  
   const [isLoadingInsight, setIsLoadingInsight] = React.useState(true);
+  const [insightError, setInsightError] = React.useState<string | null>(null);
 
-  const [error, setError] = React.useState<string | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = React.useState(true);
+  const [initialError, setInitialError] = React.useState<string | null>(null);
+
   const { toast } = useToast();
 
   const fetchData = React.useCallback(async () => {
     setIsLoadingSummary(true);
+    setSummaryError(null);
     setIsLoadingColors(true);
+    setColorsError(null);
     setIsLoadingStyles(true);
+    setStylesError(null);
     setIsLoadingActivity(true);
+    setActivityError(null);
     setIsLoadingInsight(true);
-    setError(null);
+    setInsightError(null);
+    setInitialError(null);
+    setIsInitialLoading(true);
 
     try {
-      const [summaryRes, colorsRes, stylesRes, activityRes, insightRes] = await Promise.all([
+      const results = await Promise.allSettled([
         getStatisticsSummaryAction(),
         getColorDistributionStatsAction(),
         getStyleUsageStatsAction(),
@@ -56,35 +73,85 @@ export default function StatisticsPage() {
         getIntelligentInsightDataAction()
       ]);
 
-      if (summaryRes.error) throw new Error(`Resumen: ${summaryRes.error}`);
-      setSummary(summaryRes.data || null);
+      const [summaryRes, colorsRes, stylesRes, activityRes, insightRes] = results;
+
+      if (summaryRes.status === 'fulfilled') {
+        if (summaryRes.value.error) {
+          setSummaryError(summaryRes.value.error);
+          toast({ title: 'Error Resumen', description: summaryRes.value.error, variant: 'destructive' });
+        } else {
+          setSummary(summaryRes.value.data || null);
+        }
+      } else {
+        setSummaryError(summaryRes.reason?.message || "Error desconocido al cargar resumen.");
+        toast({ title: 'Error Resumen', description: summaryRes.reason?.message || "Error desconocido", variant: 'destructive' });
+      }
       setIsLoadingSummary(false);
 
-      if (colorsRes.error) throw new Error(`Colores: ${colorsRes.error}`);
-      setColorData(colorsRes.data || []);
+      if (colorsRes.status === 'fulfilled') {
+        if (colorsRes.value.error) {
+          setColorsError(colorsRes.value.error);
+          toast({ title: 'Error Colores', description: colorsRes.value.error, variant: 'destructive' });
+        } else {
+          setColorData(colorsRes.value.data || []);
+        }
+      } else {
+        setColorsError(colorsRes.reason?.message || "Error desconocido al cargar colores.");
+        toast({ title: 'Error Colores', description: colorsRes.reason?.message || "Error desconocido", variant: 'destructive' });
+      }
       setIsLoadingColors(false);
       
-      if (stylesRes.error) throw new Error(`Estilos: ${stylesRes.error}`);
-      setStyleData(stylesRes.data || []);
+      if (stylesRes.status === 'fulfilled') {
+        if (stylesRes.value.error) {
+          setStylesError(stylesRes.value.error);
+          toast({ title: 'Error Estilos', description: stylesRes.value.error, variant: 'destructive' });
+        } else {
+          setStyleData(stylesRes.value.data || []);
+        }
+      } else {
+        setStylesError(stylesRes.reason?.message || "Error desconocido al cargar estilos.");
+        toast({ title: 'Error Estilos', description: stylesRes.reason?.message || "Error desconocido", variant: 'destructive' });
+      }
       setIsLoadingStyles(false);
 
-      if (activityRes.error) throw new Error(`Actividad: ${activityRes.error}`);
-      setActivityData(activityRes.data || []);
+      if (activityRes.status === 'fulfilled') {
+        if (activityRes.value.error) {
+          setActivityError(activityRes.value.error);
+           toast({ title: 'Error Actividad', description: activityRes.value.error, variant: 'destructive' });
+        } else {
+          setActivityData(activityRes.value.data || []);
+        }
+      } else {
+        setActivityError(activityRes.reason?.message || "Error desconocido al cargar actividad.");
+        toast({ title: 'Error Actividad', description: activityRes.reason?.message || "Error desconocido", variant: 'destructive' });
+      }
       setIsLoadingActivity(false);
 
-      if (insightRes.error) throw new Error(`Insight: ${insightRes.error}`);
-      setInsightData(insightRes.data || null);
+      if (insightRes.status === 'fulfilled') {
+        if (insightRes.value.error) {
+          setInsightError(insightRes.value.error);
+          toast({ title: 'Error Insights', description: insightRes.value.error, variant: 'destructive' });
+        } else {
+          setInsightData(insightRes.value.data || null);
+        }
+      } else {
+        setInsightError(insightRes.reason?.message || "Error desconocido al cargar insights.");
+         toast({ title: 'Error Insights', description: insightRes.reason?.message || "Error desconocido", variant: 'destructive' });
+      }
       setIsLoadingInsight(false);
+
+      // Check if all initial fetches failed
+      const allFailed = results.every(r => r.status === 'rejected' || (r.status === 'fulfilled' && r.value.error));
+      if (allFailed) {
+        setInitialError("No se pudieron cargar los datos de estadísticas. Inténtalo de nuevo.");
+      }
 
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : "Error desconocido al cargar estadísticas.";
-      setError(errorMessage);
-      toast({ title: 'Error al Cargar Estadísticas', description: errorMessage, variant: 'destructive' });
-      setIsLoadingSummary(false);
-      setIsLoadingColors(false);
-      setIsLoadingStyles(false);
-      setIsLoadingActivity(false);
-      setIsLoadingInsight(false);
+      const errorMessage = e instanceof Error ? e.message : "Error general al cargar estadísticas.";
+      setInitialError(errorMessage);
+      toast({ title: 'Error General', description: errorMessage, variant: 'destructive' });
+    } finally {
+        setIsInitialLoading(false);
     }
   }, [toast]);
 
@@ -92,17 +159,17 @@ export default function StatisticsPage() {
     fetchData();
   }, [fetchData]);
 
-  const renderLoadingError = (sectionError: string | null) => (
+  const renderLoadingError = (sectionError: string | null, sectionName: string) => (
     <div className="my-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg flex items-center gap-3">
       <AlertTriangle className="h-6 w-6" />
       <div>
-        <h3 className="font-semibold">Error al cargar esta sección</h3>
+        <h3 className="font-semibold">Error al cargar {sectionName}</h3>
         <p className="text-sm">{sectionError || "Ocurrió un error."}</p>
       </div>
     </div>
   );
   
-  if (isLoadingSummary && isLoadingColors && isLoadingStyles && isLoadingActivity && isLoadingInsight && !error) {
+  if (isInitialLoading && !initialError) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
@@ -115,12 +182,12 @@ export default function StatisticsPage() {
     );
   }
   
-  if (error && !summary && !colorData.length && !styleData.length && !activityData.length) {
+  if (initialError) {
      return (
       <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
         <main className="flex-grow container mx-auto px-4 py-8">
-           {renderLoadingError(error)}
+           {renderLoadingError(initialError, "las estadísticas")}
            <div className="text-center mt-4">
                 <Button onClick={fetchData} variant="outline">
                     <TrendingUp className="mr-2 h-4 w-4"/>Intentar de Nuevo
@@ -142,7 +209,6 @@ export default function StatisticsPage() {
                 <h1 className="text-3xl font-bold text-foreground">Estadísticas de tu Armario</h1>
                 <p className="text-muted-foreground">Conocé tu estilo y uso de ropa.</p>
             </div>
-            {/* <Button variant="outline" disabled> <Download className="mr-2 h-4 w-4"/> Exportar (Próximamente)</Button> */}
         </div>
 
         {/* Summary Cards */}
@@ -152,6 +218,7 @@ export default function StatisticsPage() {
           <StatsCard title="Estilos Diferentes" value={summary?.prendasPorEstiloCount?.toString() ?? '0'} icon={LayoutGrid} description="En tus prendas activas" isLoading={isLoadingSummary}/>
           <StatsCard title="Looks Usados (Mes)" value={summary?.looksUsadosEsteMes?.toString() ?? '0'} icon={CalendarClock} description="Asignaciones en calendario" isLoading={isLoadingSummary}/>
         </div>
+        {summaryError && renderLoadingError(summaryError, "el resumen")}
         
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
           {/* Color Distribution */}
@@ -164,7 +231,9 @@ export default function StatisticsPage() {
               <CardDescription>Colores más frecuentes en tus prendas.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ColorDistributionChart data={colorData} isLoading={isLoadingColors} error={isLoadingColors && error ? error : undefined} />
+              <ColorDistributionChart data={colorData} />
+               {isLoadingColors && !colorsError && <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+               {colorsError && renderLoadingError(colorsError, "la distribución de colores")}
             </CardContent>
           </Card>
 
@@ -178,7 +247,9 @@ export default function StatisticsPage() {
               <CardDescription>Cantidad de prendas por cada estilo.</CardDescription>
             </CardHeader>
             <CardContent>
-              <StyleUsageChart data={styleData} isLoading={isLoadingStyles} error={isLoadingStyles && error ? error : undefined} />
+              <StyleUsageChart data={styleData} />
+              {isLoadingStyles && !stylesError && <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+              {stylesError && renderLoadingError(stylesError, "el uso de estilos")}
             </CardContent>
           </Card>
         </div>
@@ -194,12 +265,14 @@ export default function StatisticsPage() {
                 <CardDescription>Prendas o looks asignados en los últimos meses.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                <TimeActivityChart data={activityData} isLoading={isLoadingActivity} error={isLoadingActivity && error ? error : undefined}/>
+                <TimeActivityChart data={activityData} />
+                {isLoadingActivity && !activityError && <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}
+                {activityError && renderLoadingError(activityError, "la actividad en el tiempo")}
                 </CardContent>
             </Card>
         </div>
         
-        <IntelligentInsightCard data={insightData} isLoading={isLoadingInsight} error={isLoadingInsight && error ? error : undefined} />
+        <IntelligentInsightCard data={insightData} isLoading={isLoadingInsight} error={insightError} />
 
       </main>
       <Footer />
