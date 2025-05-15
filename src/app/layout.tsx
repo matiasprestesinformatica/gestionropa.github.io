@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'EstilosIA',
-  description: 'AI Powered Outfit Suggester',
+  description: 'Tu gestion para el armario',
 };
 
 export default function RootLayout({
