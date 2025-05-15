@@ -1,6 +1,6 @@
 
 // src/lib/dataMappers.ts
-'use server'; // Can be 'use server' if used in server actions, or remove if only client/shared
+// 'use server' directive removed from here
 
 import type { Prenda } from '@/types';
 import { format, parseISO, isValid } from 'date-fns';
@@ -19,16 +19,19 @@ export function mapDbPrendaToClient(dbRecord: any): Prenda {
       } else if (dbRecord.fechacompra instanceof Date) {
         dateObj = dbRecord.fechacompra;
       } else {
+        // If it's null or undefined, or an unexpected type, let it default to empty string later
+        // console.warn(`Unexpected type for fechacompra: ${typeof dbRecord.fechacompra}, value: ${dbRecord.fechacompra}`);
         throw new Error('Invalid date type for fechacompra');
       }
       
       if (isValid(dateObj)) {
         formattedFechacompra = format(dateObj, 'yyyy-MM-dd');
       } else {
-        console.warn(`Invalid date for fechacompra (after parsing attempt): ${dbRecord.fechacompra}. Setting to empty string.`);
+        // console.warn(`Invalid date for fechacompra (after parsing attempt): ${dbRecord.fechacompra}. Setting to empty string.`);
       }
     } catch (e) {
-      console.warn(`Error parsing date for fechacompra: ${dbRecord.fechacompra}`, e);
+      // console.warn(`Error parsing date for fechacompra: ${dbRecord.fechacompra}`, e);
+      // formattedFechacompra remains ''
     }
   }
 
@@ -38,9 +41,9 @@ export function mapDbPrendaToClient(dbRecord: any): Prenda {
     nombre: dbRecord.nombre || '',
     tipo: dbRecord.tipo || '',
     color: dbRecord.color || '',
-    modelo: dbRecord.modelo || '', // Was talla
+    modelo: dbRecord.modelo || '', 
     temporada: dbRecord.temporada || '',
-    fechacompra: formattedFechacompra, // Was ocasion, now a DATE type
+    fechacompra: formattedFechacompra,
     imagen_url: dbRecord.imagen_url || '',
     temperatura_min: dbRecord.temperatura_min,
     temperatura_max: dbRecord.temperatura_max,
