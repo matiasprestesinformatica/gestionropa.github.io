@@ -1,4 +1,4 @@
-
+'use client';
 import Link from 'next/link';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button'; // Added for navigation
