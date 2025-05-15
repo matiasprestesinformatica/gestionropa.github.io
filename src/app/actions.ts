@@ -23,7 +23,8 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
-// Helper to map DB record (with talla, ocasion) to client Prenda (with modelo, fechacompra)
+// Helper to map DB record to client Prenda
+// Ahora los nombres de columna de la BD (modelo, fechacompra) coinciden con los de Prenda
 function mapDbPrendaToClient(dbRecord: any): Prenda {
   return {
     id: Number(dbRecord.id),
@@ -31,9 +32,9 @@ function mapDbPrendaToClient(dbRecord: any): Prenda {
     nombre: dbRecord.nombre,
     tipo: dbRecord.tipo,
     color: dbRecord.color,
-    modelo: dbRecord.talla, // Map talla to modelo
+    modelo: dbRecord.modelo, // Directamente desde la BD
     temporada: dbRecord.temporada,
-    fechacompra: dbRecord.ocasion, // Map ocasion to fechacompra
+    fechacompra: dbRecord.fechacompra, // Directamente desde la BD
     imagen_url: dbRecord.imagen_url,
     temperatura_min: dbRecord.temperatura_min,
     temperatura_max: dbRecord.temperatura_max,
@@ -63,7 +64,6 @@ export async function getAISuggestionAction(
 
     const [minUserTemp, maxUserTemp] = temperature;
 
-    // Filter based on client-side Prenda structure (which uses 'estilo', 'temperatura_min', 'temperatura_max')
     const filteredPrendas = allClientPrendas.filter(p => {
       const styleMatch = p.estilo.toLowerCase() === styleId.toLowerCase();
       const tempMatch = (
@@ -118,14 +118,14 @@ export async function getAISuggestionAction(
   }
 }
 
-// Schema for form data validation (uses modelo, fechacompra)
+// Schema for form data validation
 const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.string().min(1, "El tipo es requerido."),
   color: z.string().min(1, "El color es requerido."),
-  modelo: z.string().min(1, "El modelo es requerido."), // Changed from talla
+  modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
-  fechacompra: z.string().min(1, "La fecha de compra es requerida."), // Changed from ocasion
+  fechacompra: z.string().min(1, "La fecha de compra es requerida."),
   imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
@@ -147,14 +147,14 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
   
   const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
 
-  // Item to be inserted into DB (uses talla, ocasion)
+  // Item to be inserted into DB - no más mapeo necesario, los nombres coinciden
   const itemToInsertToDb = {
     nombre,
     tipo,
     color,
-    talla: modelo, // Map modelo to talla
+    modelo, // Nombre de columna en BD es 'modelo'
     temporada,
-    ocasion: fechacompra, // Map fechacompra to ocasion
+    fechacompra, // Nombre de columna en BD es 'fechacompra'
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -215,14 +215,14 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
 
   const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
   
-  // Item to be updated in DB (uses talla, ocasion)
+  // Item to be updated in DB - no más mapeo necesario
   const itemToUpdateInDb = {
     nombre,
     tipo,
     color,
-    talla: modelo, // Map modelo to talla
+    modelo, // Nombre de columna en BD es 'modelo'
     temporada,
-    ocasion: fechacompra, // Map fechacompra to ocasion
+    fechacompra, // Nombre de columna en BD es 'fechacompra'
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
