@@ -24,22 +24,21 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Prenda } from '@/types'; 
-import { CLOTHING_TYPES, SEASONS, PRENDA_COLORS } from '@/types';
+import type { Prenda } from '@/types';
+import { SEASONS, PRENDA_COLORS, TIPO_PRENDA_ENUM_VALUES } from '@/types';
 import { styleOptions } from '@/components/StyleSelection';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { parseISO, isValid } from 'date-fns'; // Added import
+import { parseISO, isValid, format } from 'date-fns';
 
-// Zod schema using 'modelo' and 'fechacompra' for form validation
 const prendaFormSchema = z.object({
   nombre: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
-  tipo: z.string().min(1, { message: 'Por favor selecciona un tipo.' }),
+  tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { required_error: "Por favor selecciona un tipo válido."}),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, { message: 'El modelo es requerido.' }),
+  modelo: z.string().min(1, { message: 'El modelo es requerido.' }), // Was talla
   temporada: z.string().min(1, { message: 'Por favor selecciona una temporada.' }),
-  fechacompra: z.string().refine((val) => { 
-    if (!val) return true; 
+  fechacompra: z.string().refine((val) => { // Was ocasion
+    if (val === '' || val === null || val === undefined) return true;
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
@@ -49,6 +48,7 @@ const prendaFormSchema = z.object({
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
   estilo: z.string().min(1, { message: 'Por favor selecciona un estilo.' }),
+  is_archived: z.preprocess(val => val === 'on' || val === 'true' || val === true, z.boolean()).optional().default(false),
 });
 
 export type PrendaFormData = z.infer<typeof prendaFormSchema>;
@@ -57,61 +57,66 @@ interface ClothingFormProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (data: PrendaFormData, itemId?: number) => Promise<{error?: string, validationErrors?: z.ZodIssue[]}>;
-  initialData?: Prenda | null; 
-  itemId?: number | null; 
+  initialData?: Prenda | null;
+  itemId?: number | null;
 }
 
 export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, itemId }: ClothingFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  const defaultFormValues: PrendaFormData = {
+    nombre: '',
+    tipo: TIPO_PRENDA_ENUM_VALUES[0], // Default to the first type
+    color: PRENDA_COLORS[0], // Default to the first color
+    modelo: '',
+    temporada: SEASONS[0], // Default to the first season
+    fechacompra: '',
+    imagen_url: '',
+    temperatura_min: undefined,
+    temperatura_max: undefined,
+    estilo: styleOptions[0].id, // Default to the first style
+    is_archived: false,
+  };
+
   const form = useForm<PrendaFormData>({
     resolver: zodResolver(prendaFormSchema),
-    defaultValues: { 
-      nombre: initialData?.nombre || '',
-      tipo: initialData?.tipo || '',
-      color: initialData?.color as typeof PRENDA_COLORS[number] || PRENDA_COLORS[0],
-      modelo: initialData?.modelo || '',
-      temporada: initialData?.temporada || '',
-      fechacompra: initialData?.fechacompra || '', 
-      imagen_url: initialData?.imagen_url || '',
-      temperatura_min: initialData?.temperatura_min ?? undefined,
-      temperatura_max: initialData?.temperatura_max ?? undefined,
-      estilo: initialData?.estilo || '',
-    },
+    defaultValues: defaultFormValues,
   });
 
   React.useEffect(() => {
-    if (isOpen) { 
+    if (isOpen) {
       if (initialData) {
-        const validInitialColor = PRENDA_COLORS.includes(initialData.color as any) 
+        const validInitialColor = PRENDA_COLORS.includes(initialData.color as any)
           ? initialData.color as typeof PRENDA_COLORS[number]
-          : PRENDA_COLORS[0]; 
-        form.reset({ 
+          : defaultFormValues.color;
+        const validInitialTipo = TIPO_PRENDA_ENUM_VALUES.includes(initialData.tipo as any)
+          ? initialData.tipo as typeof TIPO_PRENDA_ENUM_VALUES[number]
+          : defaultFormValues.tipo;
+
+        form.reset({
           nombre: initialData.nombre,
-          tipo: initialData.tipo,
+          tipo: validInitialTipo,
           color: validInitialColor,
           modelo: initialData.modelo,
           temporada: initialData.temporada,
-          fechacompra: initialData.fechacompra, 
+          fechacompra: initialData.fechacompra ? initialData.fechacompra : '', // Already YYYY-MM-DD from mapper
           imagen_url: initialData.imagen_url,
           temperatura_min: initialData.temperatura_min ?? undefined,
           temperatura_max: initialData.temperatura_max ?? undefined,
           estilo: initialData.estilo,
+          is_archived: initialData.is_archived || false,
         });
       } else {
-        form.reset({ 
-          nombre: '', tipo: '', color: PRENDA_COLORS[0], modelo: '', temporada: '', fechacompra: '',
-          imagen_url: '', temperatura_min: undefined, temperatura_max: undefined, estilo: ''
-        });
+        form.reset(defaultFormValues);
       }
     }
-  }, [initialData, form, isOpen]);
+  }, [initialData, form, isOpen, defaultFormValues]);
 
 
   const handleFormSubmit = async (data: PrendaFormData) => {
     setIsSubmitting(true);
-    const result = await onSubmit(data, itemId !== null && itemId !== undefined ? itemId : undefined); 
+    const result = await onSubmit(data, itemId !== null && itemId !== undefined ? itemId : undefined);
     setIsSubmitting(false);
 
     if (result.error) {
@@ -137,7 +142,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
         description: `Prenda ${initialData ? 'actualizada' : 'agregada'} correctamente.`,
         variant: 'default',
       });
-      onOpenChange(false); 
+      onOpenChange(false);
     }
   };
 
@@ -160,17 +165,17 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
               {/* Tipo */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="tipo" className="text-right">Tipo</Label>
-                <Select onValueChange={(value) => form.setValue('tipo', value)} defaultValue={form.getValues('tipo')}>
+                <Select onValueChange={(value) => form.setValue('tipo', value as typeof TIPO_PRENDA_ENUM_VALUES[number])} defaultValue={form.getValues('tipo')}>
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Selecciona un tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CLOTHING_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                    {TIPO_PRENDA_ENUM_VALUES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {form.formState.errors.tipo && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.tipo.message}</p>}
               </div>
-              
+
               {/* Color */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="color" className="text-right">Color</Label>
@@ -226,7 +231,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
                 </Select>
                 {form.formState.errors.estilo && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.estilo.message}</p>}
               </div>
-              
+
               {/* Image URL */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="imagen_url" className="text-right">URL de Imagen</Label>
@@ -263,4 +268,3 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
     </Dialog>
   );
 }
-

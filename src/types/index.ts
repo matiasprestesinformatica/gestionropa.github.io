@@ -2,10 +2,10 @@
 import type { LucideIcon } from 'lucide-react';
 
 export const PRENDA_COLORS = [
-  'Rojo', 'Azul', 'Verde', 'Amarillo', 'Negro', 'Blanco', 'Gris', 'Marrón', 
-  'Naranja', 'Violeta', 'Rosa', 'Beige', 'Celeste', 'Dorado', 'Plateado', 
-  'Multicolor', 'Estampado', 'Otro', 'Cian', 'Magenta', 'Lima', 'Oliva', 
-  'Turquesa', 'Índigo', 'Salmón', 'Coral', 'Lavanda', 'Menta', 'Caqui', 
+  'Rojo', 'Azul', 'Verde', 'Amarillo', 'Negro', 'Blanco', 'Gris', 'Marrón',
+  'Naranja', 'Violeta', 'Rosa', 'Beige', 'Celeste', 'Dorado', 'Plateado',
+  'Multicolor', 'Estampado', 'Otro', 'Cian', 'Magenta', 'Lima', 'Oliva',
+  'Turquesa', 'Índigo', 'Salmón', 'Coral', 'Lavanda', 'Menta', 'Caqui',
   'Borgoña', 'Fucsia', 'Cuadrille'
 ] as const;
 
@@ -20,11 +20,11 @@ export interface StyleOption {
 }
 
 export interface OutfitItem {
-  id: string; 
+  id: string;
   name: string;
   imageUrl: string;
-  category: string; 
-  aiHint: string; 
+  category: string;
+  aiHint: string;
   color?: PrendaColor | string;
 }
 
@@ -35,24 +35,24 @@ export interface SuggestedOutfit {
 }
 
 // --- Closet Management Types ---
+export const TIPO_PRENDA_ENUM_VALUES = ['Cuerpo', 'Piernas', 'Zapatos', 'Abrigos', 'Accesorios'] as const;
+export type TipoPrenda = typeof TIPO_PRENDA_ENUM_VALUES[number];
+
 export interface Prenda {
-  id: number; 
-  created_at: string; 
+  id: number;
+  created_at: string;
   nombre: string;
-  tipo: string;
+  tipo: TipoPrenda | string; // Can still be string for flexibility if needed, but forms will use enum
   color: PrendaColor | string;
-  modelo: string; // Formerly talla in DB, now directly 'modelo'
+  modelo: string;
   temporada: string;
-  fechacompra: string; // Formerly ocasion in DB, now directly 'fechacompra' (YYYY-MM-DD)
+  fechacompra: string; // YYYY-MM-DD
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
   estilo: string;
-  is_archived?: boolean; 
+  is_archived?: boolean;
 }
-
-export const CLOTHING_TYPES = ['Camisa', 'Pantalón', 'Vestido', 'Falda', 'Chaqueta', 'Suéter', 'Zapatos', 'Accesorio', 'Otro'] as const;
-export type TipoPrenda = typeof CLOTHING_TYPES[number];
 
 export const SEASONS = ['Verano', 'Invierno', 'Otoño', 'Primavera', 'Todo el Año'] as const;
 export type TemporadaPrenda = typeof SEASONS[number];
@@ -68,7 +68,7 @@ export interface Look {
   descripcion?: string | null;
   estilo: string;
   imagen_url?: string | null;
-  prendas: Prenda[]; 
+  prendas: Prenda[];
 }
 
 export interface LookFormData {
@@ -76,7 +76,7 @@ export interface LookFormData {
   descripcion?: string;
   estilo: string;
   imagen_url?: string;
-  prenda_ids: number[]; 
+  prenda_ids: number[];
 }
 
 // --- Calendar Page Types ---
@@ -91,7 +91,7 @@ export interface CalendarAssignmentBase {
 export interface PrendaCalendarAssignment extends CalendarAssignmentBase {
   tipo_asignacion: 'prenda';
   prenda_id: number;
-  prenda?: Prenda; 
+  prenda?: Prenda;
   look_id?: null;
   look?: null;
 }
@@ -99,7 +99,7 @@ export interface PrendaCalendarAssignment extends CalendarAssignmentBase {
 export interface LookCalendarAssignment extends CalendarAssignmentBase {
   tipo_asignacion: 'look';
   look_id: number;
-  look?: Look; 
+  look?: Look;
   prenda_id?: null;
   prenda?: null;
 }
@@ -137,7 +137,7 @@ export interface DashboardStats {
 export interface ColorFrequency {
   color: string;
   count: number;
-  fill: string; 
+  fill: string;
 }
 
 export interface StyleUsageStat {
@@ -154,7 +154,7 @@ export interface TimeActivityStat {
 
 export interface StatisticsSummary extends DashboardStats {
   prendasPorEstiloCount: number;
-  looksUsadosEsteMes: number; 
+  looksUsadosEsteMes: number;
 }
 
 export interface IntelligentInsightData {
@@ -163,10 +163,10 @@ export interface IntelligentInsightData {
 
 // --- HomePage Enhancement Types ---
 export interface HistoricalSuggestion {
-  id: string; 
-  timestamp: number; 
+  id: string;
+  timestamp: number;
   temperature: [number, number];
   selectedStyle: string;
   useClosetInfo: boolean;
-  suggestion: SuggestedOutfit; 
+  suggestion: SuggestedOutfit;
 }

@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Search, X } from 'lucide-react';
-import { CLOTHING_TYPES, SEASONS } from '@/types';
+import { TIPO_PRENDA_ENUM_VALUES, SEASONS } from '@/types'; // Updated import
 import { styleOptions } from '@/components/StyleSelection';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -68,7 +68,7 @@ export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: Clo
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL_ITEMS_PLACEHOLDER_VALUE}>Todos los tipos</SelectItem>
-              {CLOTHING_TYPES.map((type) => (
+              {TIPO_PRENDA_ENUM_VALUES.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
                 </SelectItem>
@@ -93,7 +93,7 @@ export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: Clo
             </SelectContent>
           </Select>
         </div>
-        
+
         <div>
           <Label htmlFor="filter-temporada" className="text-sm font-medium text-muted-foreground">Temporada</Label>
           <Select value={filters.temporada || ALL_ITEMS_PLACEHOLDER_VALUE} onValueChange={(value) => handleSelectChange('temporada', value)}>

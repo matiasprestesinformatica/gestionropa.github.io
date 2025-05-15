@@ -2,8 +2,8 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, PrendaColor } from '@/types';
-import { PRENDA_COLORS } from '@/types'; // Import PRENDA_COLORS
+import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, TipoPrenda } from '@/types';
+import { PRENDA_COLORS, TIPO_PRENDA_ENUM_VALUES } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -76,7 +76,7 @@ export async function getAISuggestionAction(
       id: p.id.toString(),
       name: p.nombre,
       imageUrl: p.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(p.nombre)}`,
-      category: p.tipo,
+      category: p.tipo as string, // Assuming TipoPrenda will be a string here
       color: p.color,
       aiHint: `${p.tipo.toLowerCase()} ${p.color ? p.color.toLowerCase() : ''}`.trim().substring(0,50) || p.nombre.toLowerCase(),
     }));
@@ -106,12 +106,12 @@ export async function getAISuggestionAction(
 
 const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
-  tipo: z.string().min(1, "El tipo es requerido."),
+  tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { errorMap: () => ({ message: "Por favor selecciona un tipo válido." }) }),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, "El modelo es requerido."),
+  modelo: z.string().min(1, "El modelo es requerido."), // Was talla
   temporada: z.string().min(1, "La temporada es requerida."),
-  fechacompra: z.string().refine((val) => {
-    if (val === '' || val === null || val === undefined) return true; 
+  fechacompra: z.string().refine((val) => { // Was ocasion
+    if (val === '' || val === null || val === undefined) return true;
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
@@ -145,11 +145,11 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
 
   const itemToInsertToDb = {
     nombre,
-    tipo,
-    color,
-    modelo,
+    tipo, // This will be saved to 'tipo' (now an ENUM)
+    color, // This will be saved to 'color' (now an ENUM)
+    modelo, // This will be saved to 'modelo' (formerly 'talla')
     temporada,
-    fechacompra: fechacompra || null, // Database column is `fechacompra` (formerly ocasion)
+    fechacompra: fechacompra || null, // This will be saved to 'fechacompra' (formerly 'ocasion', now DATE)
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -167,7 +167,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // Now home page
+    revalidatePath('/');
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -223,9 +223,9 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     nombre,
     tipo,
     color,
-    modelo, // This will be saved to 'modelo' column (formerly 'talla')
+    modelo,
     temporada,
-    fechacompra: fechacompra || null, // This will be saved to 'fechacompra' column (formerly 'ocasion')
+    fechacompra: fechacompra || null,
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -244,7 +244,7 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); 
+    revalidatePath('/');
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -525,7 +525,7 @@ export async function getCalendarAssignmentsAction(
       if (assignment.tipo_asignacion === 'prenda' && assignment.prendas) {
         return {
           ...assignment,
-          fecha: assignment.fecha, // Fecha ya está como YYYY-MM-DD desde la DB
+          fecha: assignment.fecha,
           prenda: mapDbPrendaToClient(assignment.prendas),
           look: null,
           look_id: null,
@@ -533,7 +533,7 @@ export async function getCalendarAssignmentsAction(
       } else if (assignment.tipo_asignacion === 'look' && assignment.looks) {
         return {
           ...assignment,
-          fecha: assignment.fecha, // Fecha ya está como YYYY-MM-DD
+          fecha: assignment.fecha,
           look: {
             ...assignment.looks,
             prendas: assignment.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)),
@@ -721,18 +721,16 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
     if (prendasError) throw prendasError;
     if (looksError) throw looksError;
 
-    // Count distinct styles from prendas
     const { data: stylesData, error: stylesError } = await supabase
       .from('prendas')
       .select('estilo', { count: 'exact' })
       .eq('is_archived', false)
-      .neq('estilo', ''); // Ensure estilo is not empty or null
+      .neq('estilo', '');
 
     if (stylesError) throw stylesError;
     const prendasPorEstiloCount = new Set(stylesData.map(s => s.estilo)).size;
 
 
-    // Looks used this month (example, needs more robust date handling)
     const currentMonth = new Date();
     const firstDayOfMonth = formatISO(startOfMonth(currentMonth), { representation: 'date' });
     const lastDayOfMonth = formatISO(endOfMonth(currentMonth), { representation: 'date' });
@@ -743,7 +741,7 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
       .eq('tipo_asignacion', 'look')
       .gte('fecha', firstDayOfMonth)
       .lte('fecha', lastDayOfMonth);
-    
+
     if(looksUsadosError) console.warn("Error fetching looks used this month:", looksUsadosError.message);
 
 
@@ -783,7 +781,7 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
     const sortedColors: ColorFrequency[] = Object.entries(colorCounts)
       .sort(([, a], [, b]) => b - a)
       .map(([color, count], index) => ({ color, count, fill: chartColors[index % chartColors.length] }));
-    
+
     return { data: sortedColors };
   } catch (error) {
     console.error('Error fetching color distribution:', error);
@@ -799,7 +797,7 @@ export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageSta
       .select('estilo')
       .eq('is_archived', false)
       .neq('estilo', '');
-      
+
     if (error) throw error;
 
     const styleCounts: Record<string, number> = {};
@@ -809,11 +807,11 @@ export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageSta
         styleCounts[styleKey] = (styleCounts[styleKey] || 0) + 1;
       }
     });
-    
+
     const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
     const styleUsageStats: StyleUsageStat[] = Object.entries(styleCounts)
       .map(([name, value], index) => ({ name, value, fill: chartColors[index % chartColors.length] }))
-      .sort((a, b) => b.value - a.value); // Sort by count descending
+      .sort((a, b) => b.value - a.value);
 
     return { data: styleUsageStats };
   } catch (error) {
@@ -835,7 +833,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
       monthLabels.push(monthKey);
       activityData[monthKey] = 0;
     }
-    
+
     const startDate = formatISO(startOfMonth(subMonths(today, monthsAgo -1)), { representation: 'date' });
     const endDate = formatISO(endOfMonth(today), { representation: 'date' });
 
@@ -848,7 +846,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
     if (error) throw error;
 
     data.forEach(assignment => {
-      const assignmentDate = parseISO(assignment.fecha); // No need to add 'T00:00:00' as DB stores DATE
+      const assignmentDate = parseISO(assignment.fecha);
       const monthKey = format(assignmentDate, 'MMM yy', { locale: es });
       if (activityData.hasOwnProperty(monthKey)) {
         activityData[monthKey]++;
@@ -861,7 +859,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
       count: activityData[label] || 0,
       fill: chartColors[index % chartColors.length]
     }));
-    
+
     return { data: timeActivityStats };
   } catch (error) {
     console.error('Error fetching time activity stats:', error);
@@ -886,9 +884,9 @@ export async function getIntelligentInsightDataAction(): Promise<{data?: Intelli
         let dominantStyle: { name: string; percentage: number } | undefined = undefined;
 
         if (totalPrendas > 0 && styleStatsResult.data.length > 0) {
-            const mostUsedStyle = styleStatsResult.data[0]; // Assumes sorted by usage
+            const mostUsedStyle = styleStatsResult.data[0];
             const percentage = (mostUsedStyle.value / totalPrendas) * 100;
-            if (percentage > 60) { // Threshold for dominant style
+            if (percentage > 60) {
                 dominantStyle = { name: mostUsedStyle.name, percentage: Math.round(percentage) };
             }
         }
