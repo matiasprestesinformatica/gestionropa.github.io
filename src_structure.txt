@@ -10,14 +10,50 @@ Estructura del directorio: /home/user/studio/src
     [types/]
 
     [app/]
+        [archivo/]
+        [calendario/]
         [closet/]
+        [configuracion/]
+        [dashboard/]
+        [deseos/]
+        [looks/]
+        [privacy-policy/]
+        [settings/]
+        [statistics/]
         - actions.ts
         - favicon.ico
         - globals.css
         - layout.tsx
         - page.tsx
 
+        [calendario/]
+            - page.tsx
+
+        [configuracion/]
+            - page.tsx
+
+        [deseos/]
+            - page.tsx
+
+        [archivo/]
+            - page.tsx
+
         [closet/]
+            - page.tsx
+
+        [settings/]
+            - page.tsx
+
+        [privacy-policy/]
+            - page.tsx
+
+        [looks/]
+            - page.tsx
+
+        [statistics/]
+            - page.tsx
+
+        [dashboard/]
             - page.tsx
 
     [hooks/]
@@ -25,15 +61,24 @@ Estructura del directorio: /home/user/studio/src
         - use-toast.ts
 
     [components/]
+        [dashboard/]
         [icons/]
+        [looks/]
         [ui/]
+        [wishlist/]
         - ClothingForm.tsx
         - Header.tsx
         - OutfitSuggestion.tsx
         - StyleSelection.tsx
         - TemperatureControl.tsx
 
+        [wishlist/]
+            - WishlistForm.tsx
+            - WishlistItemCard.tsx
+
         [ui/]
+            - Footer.tsx
+            - Navbar.tsx
             - accordion.tsx
             - alert-dialog.tsx
             - alert.tsx
@@ -70,6 +115,13 @@ Estructura del directorio: /home/user/studio/src
 
         [icons/]
             - Logo.tsx
+
+        [looks/]
+            - LookCard.tsx
+
+        [dashboard/]
+            - ColorDistributionChart.tsx
+            - StatsCard.tsx
 
     [types/]
         - index.ts
