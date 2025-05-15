@@ -3,7 +3,8 @@
 
 import * as React from 'react';
 import Image from 'next/image';
-import { AppHeader } from '@/components/Header';
+import { useSearchParams } from 'next/navigation';
+import { Navbar } from '@/components/ui/Navbar'; // Changed from AppHeader
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -40,6 +41,14 @@ export default function ClosetPage() {
   const [itemToDelete, setItemToDelete] = React.useState<Prenda | null>(null); 
 
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+
+  React.useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setIsFormOpen(true);
+      setEditingItem(null);
+    }
+  }, [searchParams]);
 
   const fetchItems = React.useCallback(async () => {
     setIsLoading(true);
@@ -62,7 +71,6 @@ export default function ClosetPage() {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-         // Ensure Date objects are converted to ISO string if type="date" input provides them
         if (value instanceof Date) {
           formData.append(key, value.toISOString().split('T')[0]);
         } else {
@@ -105,7 +113,7 @@ export default function ClosetPage() {
   
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <AppHeader />
+      <Navbar /> {/* Changed from AppHeader */}
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Mi Armario</h1>
@@ -156,9 +164,9 @@ export default function ClosetPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Color</TableHead>
-                  <TableHead>Modelo</TableHead> {/* Was Talla */}
+                  <TableHead>Modelo</TableHead>
                   <TableHead>Estilo</TableHead>
-                  <TableHead>Fecha Compra</TableHead> {/* Was Ocasion */}
+                  <TableHead>Fecha Compra</TableHead>
                   <TableHead className="text-right w-[120px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -179,9 +187,9 @@ export default function ClosetPage() {
                     <TableCell className="font-medium">{item.nombre}</TableCell>
                     <TableCell>{item.tipo}</TableCell>
                     <TableCell>{item.color}</TableCell>
-                    <TableCell>{item.modelo}</TableCell> {/* Was item.talla */}
+                    <TableCell>{item.modelo}</TableCell>
                     <TableCell>{item.estilo}</TableCell>
-                    <TableCell>{item.fechacompra}</TableCell> {/* Was item.ocasion */}
+                    <TableCell>{item.fechacompra}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openEditForm(item)} className="mr-2 hover:text-primary">
                         <Edit className="h-4 w-4" />
@@ -233,4 +241,3 @@ export default function ClosetPage() {
     </div>
   );
 }
-

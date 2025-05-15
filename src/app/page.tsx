@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { AppHeader } from '@/components/Header';
+import { Navbar } from '@/components/ui/Navbar'; // Changed from AppHeader
 import { TemperatureControl } from '@/components/TemperatureControl';
 import { StyleSelection } from '@/components/StyleSelection';
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
@@ -17,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 export default function HomePage() {
   const [temperature, setTemperature] = React.useState<[number, number]>([18, 22]);
   const [selectedStyle, setSelectedStyle] = React.useState<string | null>('casual');
-  const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(false);
+  const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(true); // Default to true as per PRD
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [suggestion, setSuggestion] = React.useState<SuggestedOutfit | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -60,7 +61,7 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <AppHeader />
+      <Navbar /> {/* Changed from AppHeader */}
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto space-y-8">
           <TemperatureControl value={temperature} onChange={setTemperature} />
@@ -74,7 +75,7 @@ export default function HomePage() {
               aria-label="Usar información del armario"
             />
             <Label htmlFor="useClosetInfo" className="text-sm font-medium text-foreground cursor-pointer">
-              Personalizar con información de mi armario (si está disponible)
+              Personalizar con información de mi armario
             </Label>
           </div>
           
