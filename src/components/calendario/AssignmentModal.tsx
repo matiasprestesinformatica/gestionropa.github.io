@@ -31,6 +31,8 @@ import { Check, ChevronsUpDown, Loader2, Tag, Sparkles } from 'lucide-react';
 import type { CalendarAssignmentFormData, Prenda, Look, CalendarAssignment } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const assignmentFormSchema = z.object({
   fecha: z.string(), // Already in YYYY-MM-DD
@@ -43,7 +45,7 @@ interface AssignmentModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (data: CalendarAssignmentFormData, assignmentId?: number) => Promise<{ data?: CalendarAssignment; error?: string }>;
-  selectedDate: Date | null;
+  selectedDate: Date | null; // Can be null initially
   existingAssignment?: CalendarAssignment | null;
   availablePrendas: Prenda[];
   availableLooks: Look[];
@@ -69,8 +71,8 @@ export function AssignmentModal({
     resolver: zodResolver(assignmentFormSchema),
     defaultValues: {
       fecha: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
-      tipo_asignacion: 'prenda', // Default, can be changed by user
-      referencia_id: 0, // Placeholder
+      tipo_asignacion: 'prenda', 
+      referencia_id: 0, 
       nota: '',
     },
   });
@@ -83,8 +85,8 @@ export function AssignmentModal({
       const defaultValues: CalendarAssignmentFormData = {
         fecha: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
         tipo_asignacion: existingAssignment?.tipo_asignacion || 'prenda',
-        referencia_id: existingAssignment 
-          ? (existingAssignment.tipo_asignacion === 'prenda' ? existingAssignment.prenda_id : existingAssignment.look_id) 
+        referencia_id: existingAssignment && existingAssignment.tipo_asignacion && (existingAssignment.tipo_asignacion === 'prenda' ? existingAssignment.prenda_id : existingAssignment.look_id)
+          ? (existingAssignment.tipo_asignacion === 'prenda' ? existingAssignment.prenda_id! : existingAssignment.look_id!)
           : 0,
         nota: existingAssignment?.nota || '',
       };
@@ -115,7 +117,7 @@ export function AssignmentModal({
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>{existingAssignment ? 'Editar Asignación' : 'Asignar a Calendario'}</DialogTitle>
-          {selectedDate && <DialogDescription>Asignando para el {format(selectedDate, "PPP", { locale: require('date-fns/locale/es')})}.</DialogDescription>}
+          {selectedDate && <DialogDescription>Asignando para el {format(selectedDate, "PPP", { locale: es })}.</DialogDescription>}
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <input type="hidden" {...register('fecha')} />
@@ -227,8 +229,3 @@ export function AssignmentModal({
   );
 }
 
-// Helper to format date consistently
-function format(date: Date, fmt: string, options?: { locale?: Locale }): string {
-  const { format: formatDateFns } = require('date-fns');
-  return formatDateFns(date, fmt, options);
-}

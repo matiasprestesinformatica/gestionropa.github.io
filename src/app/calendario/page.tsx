@@ -15,7 +15,7 @@ import type { CalendarAssignment, Prenda, Look, CalendarAssignmentFormData } fro
 import { getCalendarAssignmentsAction, addCalendarAssignmentAction, updateCalendarAssignmentAction, deleteCalendarAssignmentAction, getPrendasAction, getLooksAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, isSameDay, getMonth, getYear, addMonths, subMonths } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { es } from 'date-fns/locale'; // Changed from require
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
@@ -117,13 +117,18 @@ export default function CalendarioPage() {
 
   const getAssignmentsForDate = (date: Date | undefined): CalendarAssignment[] => {
     if (!date) return [];
-    return assignments.filter(event => isSameDay(new Date(event.fecha), date));
+    return assignments.filter(event => {
+        // Ensure event.fecha is a valid date string before parsing
+        // Supabase DATE type returns 'YYYY-MM-DD' string
+        const eventDate = new Date(event.fecha + 'T00:00:00'); // Add time part to avoid timezone issues with isSameDay
+        return isSameDay(eventDate, date);
+    });
   };
   
   const selectedDateAssignments = getAssignmentsForDate(selectedDate);
 
   const eventDays = React.useMemo(() => 
-    assignments.map(a => new Date(a.fecha))
+    assignments.map(a => new Date(a.fecha + 'T00:00:00')) // Add time part for consistency
   , [assignments]);
 
   return (
@@ -242,7 +247,7 @@ export default function CalendarioPage() {
                 <AlertDialogDescription>
                   Esta acción no se puede deshacer. Esto eliminará la asignación de
                   "{assignmentToDelete.tipo_asignacion === 'prenda' ? assignmentToDelete.prenda?.nombre : assignmentToDelete.look?.nombre}"
-                  para el día {format(new Date(assignmentToDelete.fecha + 'T00:00:00'), "PPP", { locale: es })}.
+                  para el día {assignmentToDelete.fecha ? format(new Date(assignmentToDelete.fecha + 'T00:00:00'), "PPP", { locale: es }) : 'desconocido'}.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
