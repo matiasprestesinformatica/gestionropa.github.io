@@ -2,11 +2,12 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment } from '@/types';
+import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { format, parseISO, isValid, startOfMonth, endOfMonth, formatISO } from 'date-fns';
+import { format, parseISO, isValid, startOfMonth, endOfMonth, formatISO, subMonths, getMonth, getYear } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { mapDbPrendaToClient } from '@/lib/dataMappers';
 
 interface GetOutfitSuggestionParams {
@@ -80,7 +81,7 @@ export async function getAISuggestionAction(
     }));
 
     const outfitDescription = outfitItems.map(item => item.name).join(', ');
-    const temperatureRangeString = `${temperature[0]}-${temperature[1]} degrees Celsius`;
+    const temperatureRangeString = `${temperature[0]}-${temperature[1]} grados Celsius`;
 
     const aiInput: GenerateOutfitExplanationInput = {
       temperatureRange: temperatureRangeString,
@@ -109,7 +110,7 @@ const PrendaFormSchema = z.object({
   modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
   fechacompra: z.string().refine((val) => {
-    if (val === '' || val === null || val === undefined) return true; // Allow empty or null
+    if (val === '' || val === null || val === undefined) return true; 
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
@@ -165,9 +166,10 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/dashboard');
-    revalidatePath('/');
+    revalidatePath('/dashboard'); // Now home page
+    revalidatePath('/'); // Also home page
     revalidatePath('/archivo');
+    revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
   } catch (error) {
     console.error('Error adding prenda:', error);
@@ -242,9 +244,10 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/dashboard');
-    revalidatePath('/');
+    revalidatePath('/dashboard'); // Now home page
+    revalidatePath('/'); // Also home page
     revalidatePath('/archivo');
+    revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
   } catch (error) {
     console.error('Error updating prenda:', error);
@@ -273,6 +276,7 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     revalidatePath('/archivo');
     revalidatePath('/looks');
     revalidatePath('/calendario');
+    revalidatePath('/statistics');
     return { success: true };
   } catch (error) {
     console.error('Error deleting prenda:', error);
@@ -390,6 +394,8 @@ export async function addLookAction(formData: LookFormData): Promise<{ data?: Lo
     if (lookPrendasError) throw lookPrendasError;
 
     revalidatePath('/looks');
+    revalidatePath('/statistics');
+
 
     const newLookResult = await getLookByIdAction(lookId);
     if (newLookResult.error || !newLookResult.data) {
@@ -450,6 +456,8 @@ export async function updateLookAction(lookId: number, formData: LookFormData): 
 
     revalidatePath('/looks');
     revalidatePath(`/looks/${lookId}`);
+    revalidatePath('/statistics');
+
 
     const finalLookResult = await getLookByIdAction(lookId);
     if (finalLookResult.error || !finalLookResult.data) {
@@ -479,6 +487,7 @@ export async function deleteLookAction(lookId: number): Promise<{ success?: bool
 
     revalidatePath('/looks');
     revalidatePath('/calendario');
+    revalidatePath('/statistics');
     return { success: true };
   } catch (error) {
     console.error('Error deleting look:', error);
@@ -535,7 +544,9 @@ export async function getCalendarAssignmentsAction(
           prenda_id: null,
         } as LookCalendarAssignment;
       }
-      return { ...assignment, fecha: assignment.fecha };
+      // Fallback for potentially incomplete data, though chk_assignment_reference should prevent this
+      console.warn("Found assignment without valid prenda or look reference:", assignment.id)
+      return { ...assignment, fecha: assignment.fecha, prenda: null, look: null };
     });
     return { data: formattedAssignments };
   } catch (error) {
@@ -577,6 +588,8 @@ export async function addCalendarAssignmentAction(
     if (error) throw error;
 
     revalidatePath('/calendario');
+    revalidatePath('/statistics');
+
 
     let fullAssignment: CalendarAssignment | undefined;
     if (data.tipo_asignacion === 'prenda' && data.prendas) {
@@ -641,6 +654,8 @@ export async function updateCalendarAssignmentAction(
 
     if (error) throw error;
     revalidatePath('/calendario');
+    revalidatePath('/statistics');
+
 
     let fullAssignment: CalendarAssignment | undefined;
     if (data.tipo_asignacion === 'prenda' && data.prendas) {
@@ -685,9 +700,206 @@ export async function deleteCalendarAssignmentAction(
 
     if (error) throw error;
     revalidatePath('/calendario');
+    revalidatePath('/statistics');
     return { success: true };
   } catch (error) {
     console.error('Error deleting calendar assignment:', error);
     return { error: error instanceof Error ? error.message : 'No se pudo eliminar la asignación.' };
   }
+}
+
+// --- Statistics Actions ---
+
+export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsSummary; error?: string }> {
+  if (!supabase) {
+    console.error("Supabase client is not initialized for statistics. Check environment variables.");
+    return { error: "Error de conexión con la base de datos." };
+  }
+  try {
+    const [{ count: totalPrendas, error: prendasError }, { count: totalLooks, error: looksError }] = await Promise.all([
+      supabase.from('prendas').select('*', { count: 'exact', head: true }).eq('is_archived', false),
+      supabase.from('looks').select('*', { count: 'exact', head: true })
+    ]);
+
+    if (prendasError) throw prendasError;
+    if (looksError) throw looksError;
+
+    // Count distinct styles from prendas
+    const { data: stylesData, error: stylesError } = await supabase
+      .from('prendas')
+      .select('estilo', { count: 'exact' })
+      .eq('is_archived', false)
+      .neq('estilo', ''); // Ensure estilo is not empty or null
+
+    if (stylesError) throw stylesError;
+    const prendasPorEstiloCount = new Set(stylesData.map(s => s.estilo)).size;
+
+
+    // Looks used this month (example, needs more robust date handling)
+    const currentMonth = new Date();
+    const firstDayOfMonth = formatISO(startOfMonth(currentMonth), { representation: 'date' });
+    const lastDayOfMonth = formatISO(endOfMonth(currentMonth), { representation: 'date' });
+
+    const { count: looksUsadosEsteMes, error: looksUsadosError } = await supabase
+      .from('calendario_asignaciones')
+      .select('*', { count: 'exact', head: true })
+      .eq('tipo_asignacion', 'look')
+      .gte('fecha', firstDayOfMonth)
+      .lte('fecha', lastDayOfMonth);
+    
+    if(looksUsadosError) console.warn("Error fetching looks used this month:", looksUsadosError.message);
+
+
+    return {
+      data: {
+        totalPrendas: totalPrendas || 0,
+        totalLooks: totalLooks || 0,
+        prendasPorEstiloCount: prendasPorEstiloCount || 0,
+        looksUsadosEsteMes: looksUsadosEsteMes || 0,
+      }
+    };
+  } catch (error) {
+    console.error('Error fetching statistics summary:', error);
+    return { error: error instanceof Error ? error.message : 'Error al obtener el resumen de estadísticas.' };
+  }
+}
+
+export async function getColorDistributionStatsAction(): Promise<{ data?: ColorFrequency[]; error?: string }> {
+  if (!supabase) return { error: "Error de conexión con la base de datos." };
+  try {
+    const { data: prendas, error } = await supabase
+      .from('prendas')
+      .select('color')
+      .eq('is_archived', false)
+      .neq('color', '');
+
+    if (error) throw error;
+
+    const colorCounts: Record<string, number> = {};
+    prendas.forEach(p => {
+      if (p.color) {
+        colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
+      }
+    });
+
+    const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+    const sortedColors: ColorFrequency[] = Object.entries(colorCounts)
+      .sort(([, a], [, b]) => b - a)
+      .map(([color, count], index) => ({ color, count, fill: chartColors[index % chartColors.length] }));
+    
+    return { data: sortedColors };
+  } catch (error) {
+    console.error('Error fetching color distribution:', error);
+    return { error: error instanceof Error ? error.message : 'Error al obtener la distribución de colores.' };
+  }
+}
+
+export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageStat[]; error?: string }> {
+  if (!supabase) return { error: "Error de conexión con la base de datos." };
+  try {
+    const { data: prendas, error } = await supabase
+      .from('prendas')
+      .select('estilo')
+      .eq('is_archived', false)
+      .neq('estilo', '');
+      
+    if (error) throw error;
+
+    const styleCounts: Record<string, number> = {};
+    prendas.forEach(p => {
+      if (p.estilo) {
+        const styleKey = p.estilo.charAt(0).toUpperCase() + p.estilo.slice(1);
+        styleCounts[styleKey] = (styleCounts[styleKey] || 0) + 1;
+      }
+    });
+    
+    const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+    const styleUsageStats: StyleUsageStat[] = Object.entries(styleCounts)
+      .map(([name, value], index) => ({ name, value, fill: chartColors[index % chartColors.length] }))
+      .sort((a, b) => b.value - a.value); // Sort by count descending
+
+    return { data: styleUsageStats };
+  } catch (error) {
+    console.error('Error fetching style usage stats:', error);
+    return { error: error instanceof Error ? error.message : 'Error al obtener estadísticas de uso de estilos.' };
+  }
+}
+
+export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise<{ data?: TimeActivityStat[]; error?: string }> {
+  if (!supabase) return { error: "Error de conexión con la base de datos." };
+  try {
+    const today = new Date();
+    const activityData: Record<string, number> = {};
+    const monthLabels: string[] = [];
+
+    for (let i = monthsAgo - 1; i >= 0; i--) {
+      const targetMonth = subMonths(today, i);
+      const monthKey = format(targetMonth, 'MMM yy', { locale: es });
+      monthLabels.push(monthKey);
+      activityData[monthKey] = 0;
+    }
+    
+    const startDate = formatISO(startOfMonth(subMonths(today, monthsAgo -1)), { representation: 'date' });
+    const endDate = formatISO(endOfMonth(today), { representation: 'date' });
+
+    const { data, error } = await supabase
+      .from('calendario_asignaciones')
+      .select('fecha, tipo_asignacion')
+      .gte('fecha', startDate)
+      .lte('fecha', endDate);
+
+    if (error) throw error;
+
+    data.forEach(assignment => {
+      const assignmentDate = parseISO(assignment.fecha);
+      const monthKey = format(assignmentDate, 'MMM yy', { locale: es });
+      if (activityData.hasOwnProperty(monthKey)) {
+        activityData[monthKey]++;
+      }
+    });
+
+    const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--destructive))'];
+    const timeActivityStats: TimeActivityStat[] = monthLabels.map((label, index) => ({
+      date: label,
+      count: activityData[label] || 0,
+      fill: chartColors[index % chartColors.length]
+    }));
+    
+    return { data: timeActivityStats };
+  } catch (error) {
+    console.error('Error fetching time activity stats:', error);
+    return { error: error instanceof Error ? error.message : 'Error al obtener estadísticas de actividad en el tiempo.' };
+  }
+}
+
+export async function getIntelligentInsightDataAction(): Promise<{data?: IntelligentInsightData; error?: string}> {
+    if (!supabase) return { error: "Error de conexión con la base de datos." };
+    try {
+        const styleStatsResult = await getStyleUsageStatsAction();
+        if (styleStatsResult.error || !styleStatsResult.data) {
+            return { error: styleStatsResult.error || "No se pudieron obtener estadísticas de estilo." };
+        }
+
+        const prendasResult = await getPrendasAction();
+        if(prendasResult.error || !prendasResult.data) {
+            return { error: prendasResult.error || "No se pudieron obtener prendas."};
+        }
+        const totalPrendas = prendasResult.data.filter(p => !p.is_archived && p.estilo).length;
+
+        let dominantStyle: { name: string; percentage: number } | undefined = undefined;
+
+        if (totalPrendas > 0 && styleStatsResult.data.length > 0) {
+            const mostUsedStyle = styleStatsResult.data[0]; // Assumes sorted by usage
+            const percentage = (mostUsedStyle.value / totalPrendas) * 100;
+            if (percentage > 60) { // Threshold for dominant style
+                dominantStyle = { name: mostUsedStyle.name, percentage: Math.round(percentage) };
+            }
+        }
+
+        return { data: { dominantStyle } };
+
+    } catch (error) {
+        console.error('Error generating intelligent insight data:', error);
+        return { error: error instanceof Error ? error.message : 'Error al generar la información inteligente.' };
+    }
 }

@@ -30,9 +30,9 @@ export interface Prenda {
   nombre: string;
   tipo: string;
   color: string;
-  modelo: string; // Formerly talla in DB, now modelo in app & DB
+  modelo: string; 
   temporada: string;
-  fechacompra: string; // Formerly ocasion in DB, now fechacompra (DATE type) in app & DB
+  fechacompra: string; // YYYY-MM-DD format
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
@@ -80,7 +80,7 @@ export interface CalendarAssignmentBase {
 export interface PrendaCalendarAssignment extends CalendarAssignmentBase {
   tipo_asignacion: 'prenda';
   prenda_id: number;
-  prenda?: Prenda; // Populated after fetching
+  prenda?: Prenda; 
   look_id?: null;
   look?: null;
 }
@@ -88,7 +88,7 @@ export interface PrendaCalendarAssignment extends CalendarAssignmentBase {
 export interface LookCalendarAssignment extends CalendarAssignmentBase {
   tipo_asignacion: 'look';
   look_id: number;
-  look?: Look; // Populated after fetching
+  look?: Look; 
   prenda_id?: null;
   prenda?: null;
 }
@@ -117,16 +117,39 @@ export interface WishlistItem {
 
 export type WishlistFormData = Omit<WishlistItem, 'id' | 'status' | 'added_at'>;
 
-// --- Dashboard Types ---
+// --- Dashboard & Statistics Types ---
 export interface DashboardStats {
   totalPrendas: number;
   totalLooks: number;
+  // Potentially more stats can be added here
 }
 
 export interface ColorFrequency {
   color: string;
   count: number;
   fill: string; 
+}
+
+export interface StyleUsageStat {
+  name: string; // Style name
+  value: number; // Count of prendas
+  fill?: string; // Optional fill color for charts
+}
+
+export interface TimeActivityStat {
+  date: string; // e.g., "Ene '24", "Semana 1"
+  count: number; // e.g., looks used, prendas assigned
+  fill?: string;
+}
+
+export interface StatisticsSummary extends DashboardStats {
+  prendasPorEstiloCount: number;
+  looksUsadosEsteMes: number; // Example, can be calculated
+}
+
+export interface IntelligentInsightData {
+  dominantStyle?: { name: string; percentage: number };
+  // Other insights can be added here
 }
 
 // --- HomePage Enhancement Types ---
@@ -138,4 +161,3 @@ export interface HistoricalSuggestion {
   useClosetInfo: boolean;
   suggestion: SuggestedOutfit; 
 }
-
