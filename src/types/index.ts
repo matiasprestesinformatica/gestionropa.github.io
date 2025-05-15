@@ -4,7 +4,9 @@ import type { LucideIcon } from 'lucide-react';
 export const PRENDA_COLORS = [
   'Rojo', 'Azul', 'Verde', 'Amarillo', 'Negro', 'Blanco', 'Gris', 'Marrón', 
   'Naranja', 'Violeta', 'Rosa', 'Beige', 'Celeste', 'Dorado', 'Plateado', 
-  'Multicolor', 'Estampado', 'Otro'
+  'Multicolor', 'Estampado', 'Otro', 'Cian', 'Magenta', 'Lima', 'Oliva', 
+  'Turquesa', 'Índigo', 'Salmón', 'Coral', 'Lavanda', 'Menta', 'Caqui', 
+  'Borgoña', 'Fucsia', 'Cuadrille'
 ] as const;
 
 export type PrendaColor = typeof PRENDA_COLORS[number];
@@ -23,7 +25,7 @@ export interface OutfitItem {
   imageUrl: string;
   category: string; 
   aiHint: string; 
-  color?: PrendaColor | string; // Can be from the list or a general string if coming from other sources
+  color?: PrendaColor | string;
 }
 
 export interface SuggestedOutfit {
@@ -38,10 +40,10 @@ export interface Prenda {
   created_at: string; 
   nombre: string;
   tipo: string;
-  color: PrendaColor | string; // Use the defined type or allow string for flexibility if needed elsewhere
-  modelo: string; 
+  color: PrendaColor | string;
+  modelo: string; // Formerly talla in DB, now directly 'modelo'
   temporada: string;
-  fechacompra: string; // YYYY-MM-DD format
+  fechacompra: string; // Formerly ocasion in DB, now directly 'fechacompra' (YYYY-MM-DD)
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
@@ -130,7 +132,6 @@ export type WishlistFormData = Omit<WishlistItem, 'id' | 'status' | 'added_at'>;
 export interface DashboardStats {
   totalPrendas: number;
   totalLooks: number;
-  // Potentially more stats can be added here
 }
 
 export interface ColorFrequency {
@@ -153,12 +154,11 @@ export interface TimeActivityStat {
 
 export interface StatisticsSummary extends DashboardStats {
   prendasPorEstiloCount: number;
-  looksUsadosEsteMes: number; // Example, can be calculated
+  looksUsadosEsteMes: number; 
 }
 
 export interface IntelligentInsightData {
   dominantStyle?: { name: string; percentage: number };
-  // Other insights can be added here
 }
 
 // --- HomePage Enhancement Types ---
