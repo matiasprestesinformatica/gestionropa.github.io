@@ -30,9 +30,9 @@ export interface Prenda {
   nombre: string;
   tipo: string;
   color: string;
-  modelo: string; 
+  modelo: string; // Formerly talla in DB, now modelo in app & DB
   temporada: string;
-  fechacompra: string; // Stored as TEXT or DATE in DB, handled as string YYYY-MM-DD in form
+  fechacompra: string; // Formerly ocasion in DB, now fechacompra (DATE type) in app & DB
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
@@ -57,7 +57,7 @@ export interface Look {
   descripcion?: string | null;
   estilo: string;
   imagen_url?: string | null;
-  prendas: Prenda[]; // Array of full Prenda objects
+  prendas: Prenda[]; 
 }
 
 export interface LookFormData {
@@ -65,20 +65,43 @@ export interface LookFormData {
   descripcion?: string;
   estilo: string;
   imagen_url?: string;
-  prenda_ids: number[]; // Array of Prenda IDs
+  prenda_ids: number[]; 
 }
 
 // --- Calendar Page Types ---
-export interface CalendarEvent {
-  id: string;
-  date: Date;
-  title: string; 
-  description?: string;
-  prendaIds?: number[]; 
-  prendas?: Prenda[]; 
-  lookId?: string; 
-  look?: Look;
+export interface CalendarAssignmentBase {
+  id: number;
+  fecha: string; // Date in YYYY-MM-DD format
+  tipo_asignacion: 'prenda' | 'look';
+  nota?: string | null;
+  created_at: string;
 }
+
+export interface PrendaCalendarAssignment extends CalendarAssignmentBase {
+  tipo_asignacion: 'prenda';
+  prenda_id: number;
+  prenda?: Prenda; // Populated after fetching
+  look_id?: null;
+  look?: null;
+}
+
+export interface LookCalendarAssignment extends CalendarAssignmentBase {
+  tipo_asignacion: 'look';
+  look_id: number;
+  look?: Look; // Populated after fetching
+  prenda_id?: null;
+  prenda?: null;
+}
+
+export type CalendarAssignment = PrendaCalendarAssignment | LookCalendarAssignment;
+
+export interface CalendarAssignmentFormData {
+  fecha: string; // YYYY-MM-DD
+  tipo_asignacion: 'prenda' | 'look';
+  referencia_id: number; // prenda_id or look_id
+  nota?: string;
+}
+
 
 // --- Wishlist Page Types ---
 export interface WishlistItem {
@@ -115,3 +138,4 @@ export interface HistoricalSuggestion {
   useClosetInfo: boolean;
   suggestion: SuggestedOutfit; 
 }
+

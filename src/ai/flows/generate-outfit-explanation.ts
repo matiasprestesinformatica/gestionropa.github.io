@@ -11,7 +11,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getPrendasAction } from '@/app/actions'; // Ensure this path is correct
+import { supabase } from '@/lib/supabaseClient'; // Import supabase client
+import { mapDbPrendaToClient } from '@/lib/dataMappers'; // Import mapper
 import type { Prenda } from '@/types';
 
 const GenerateOutfitExplanationInputSchema = z.object({
@@ -26,7 +27,6 @@ export type GenerateOutfitExplanationInput = z.infer<typeof GenerateOutfitExplan
 
 const GenerateOutfitExplanationOutputSchema = z.object({
   explanation: z.string().describe('The explanation for the suggested outfit, considering temperature, style, occasion, and optionally user closet information.'),
-  // suggestedAccessories: z.array(z.string()).optional().describe("A list of suggested complementary accessories.") // Optional idea
 });
 export type GenerateOutfitExplanationOutput = z.infer<typeof GenerateOutfitExplanationOutputSchema>;
 
@@ -48,15 +48,25 @@ const getUserClosetInformation = ai.defineTool(
     outputSchema: GetUserClosetInformationToolOutputSchema,
   },
   async (input) => {
+    if (!supabase) {
+      return { closetSummary: "Could not access closet information due to a database connection issue." };
+    }
     try {
-      const prendasResult = await getPrendasAction();
-      if (prendasResult.error || !prendasResult.data) {
-        return { closetSummary: "Could not retrieve closet information at this time." };
+      const { data: dbData, error: dbError } = await supabase
+        .from('prendas')
+        .select('*')
+        .eq('estilo', input.style.toLowerCase()) // Filter by style
+        .filter('is_archived', 'is', false); // Exclude archived items
+        
+      if (dbError) {
+        console.error("Supabase error fetching prendas for tool:", dbError);
+        return { closetSummary: "Could not retrieve closet information at this time due to a database error." };
       }
 
-      const allPrendas = prendasResult.data.filter(p => !p.is_archived);
+      const allPrendas: Prenda[] = dbData.map(mapDbPrendaToClient);
+
       if (allPrendas.length === 0) {
-        return { closetSummary: "The user's closet is currently empty." };
+        return { closetSummary: `The user's closet has no items matching the ${input.style} style or they are all archived.` };
       }
 
       const tempMatch = input.temperatureRange.match(/(-?\d+)\s*-\s*(-?\d+)/);
@@ -68,16 +78,13 @@ const getUserClosetInformation = ai.defineTool(
       }
 
       const relevantPrendas = allPrendas.filter(p => {
-        const styleMatch = p.estilo.toLowerCase() === input.style.toLowerCase();
         let tempCondition = true;
-        if (minTemp !== null && maxTemp !== null) {
-          const itemMinTemp = p.temperatura_min;
-          const itemMaxTemp = p.temperatura_max;
+        if (minTemp !== null && maxTemp !== null && typeof p.temperatura_min === 'number' && typeof p.temperatura_max === 'number') {
           tempCondition = 
-            (itemMinTemp === null || itemMinTemp <= maxTemp) &&
-            (itemMaxTemp === null || itemMaxTemp >= minTemp);
+            p.temperatura_min <= maxTemp &&
+            p.temperatura_max >= minTemp;
         }
-        return styleMatch && tempCondition;
+        return tempCondition; // Style is already filtered by DB query
       });
 
       if (relevantPrendas.length === 0) {
@@ -160,7 +167,6 @@ const generateOutfitExplanationFlow = ai.defineFlow(
   async (input) => {
     const { output } = await prompt(input);
     if (!output) {
-      // Fallback or error handling if prompt fails to return an output
       return { explanation: "No se pudo generar una explicación en este momento. Por favor, intenta de nuevo." };
     }
     return output;
