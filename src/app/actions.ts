@@ -65,7 +65,7 @@ export async function getAISuggestionAction(
     }
 
     const shuffledPrendas = shuffleArray(filteredPrendas);
-    const outfitItemCount = Math.min(shuffledPrendas.length, 3);
+    const outfitItemCount = Math.min(shuffledPrendas.length, 3); // Suggest up to 3 items
     const selectedClientItems = shuffledPrendas.slice(0, outfitItemCount);
 
     if (selectedClientItems.length === 0) {
@@ -108,10 +108,10 @@ const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { errorMap: () => ({ message: "Por favor selecciona un tipo válido." }) }),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, "El modelo es requerido."), // Was talla
+  modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
-  fechacompra: z.string().refine((val) => { // Was ocasion
-    if (val === '' || val === null || val === undefined) return true;
+  fechacompra: z.string().refine((val) => {
+    if (val === '' || val === null || val === undefined) return true; // Allow empty for optional
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
@@ -145,11 +145,11 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
 
   const itemToInsertToDb = {
     nombre,
-    tipo, // This will be saved to 'tipo' (now an ENUM)
-    color, // This will be saved to 'color' (now an ENUM)
-    modelo, // This will be saved to 'modelo' (formerly 'talla')
+    tipo,
+    color,
+    modelo,
     temporada,
-    fechacompra: fechacompra || null, // This will be saved to 'fechacompra' (formerly 'ocasion', now DATE)
+    fechacompra: fechacompra || null,
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -167,7 +167,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/');
+    revalidatePath('/'); // For dashboard
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -244,7 +244,7 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/');
+    revalidatePath('/'); // For dashboard
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -270,7 +270,7 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/');
+    revalidatePath('/'); // For dashboard
     revalidatePath('/archivo');
     revalidatePath('/looks');
     revalidatePath('/calendario');
@@ -543,8 +543,8 @@ export async function getCalendarAssignmentsAction(
         } as LookCalendarAssignment;
       }
       console.warn("Found assignment without valid prenda or look reference:", assignment.id)
-      return { ...assignment, fecha: assignment.fecha, prenda: null, look: null };
-    });
+      return { ...assignment, fecha: assignment.fecha, prenda: null, look: null }; // Should not happen due to DB constraint
+    }).filter(Boolean) as CalendarAssignment[]; // Filter out any malformed assignments
     return { data: formattedAssignments };
   } catch (error) {
     console.error('Error fetching calendar assignments:', error);
@@ -723,11 +723,14 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
 
     const { data: stylesData, error: stylesError } = await supabase
       .from('prendas')
-      .select('estilo', { count: 'exact' })
+      .select('estilo', { count: 'exact' }) // This counts distinct styles, not total prendas per style.
       .eq('is_archived', false)
-      .neq('estilo', '');
+      .neq('estilo', ''); // Ensure estilo is not an empty string
 
     if (stylesError) throw stylesError;
+    // Correctly count distinct styles. If stylesData is an array of {estilo: 'styleName'}, then Set is good.
+    // If it's a count of distinct styles already, then use that. Supabase count might be different.
+    // Assuming stylesData is [{estilo: 'casual'}, {estilo: 'formal'}, {estilo: 'casual'}]
     const prendasPorEstiloCount = new Set(stylesData.map(s => s.estilo)).size;
 
 
@@ -759,6 +762,40 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
   }
 }
 
+
+const PRENDA_COLOR_MAP: Record<string, string> = {
+  'Rojo': 'hsl(0, 72%, 51%)',
+  'Azul': 'hsl(217, 91%, 60%)',
+  'Verde': 'hsl(142, 71%, 45%)',
+  'Amarillo': 'hsl(48, 96%, 53%)',
+  'Negro': 'hsl(0, 0%, 0%)',
+  'Blanco': 'hsl(0, 0%, 95%)', // Slightly off-white for visibility on white bg
+  'Gris': 'hsl(215, 14%, 65%)',
+  'Marrón': 'hsl(30, 47%, 40%)',
+  'Naranja': 'hsl(25, 95%, 53%)',
+  'Violeta': 'hsl(271, 76%, 53%)',
+  'Rosa': 'hsl(339, 82%, 60%)',
+  'Beige': 'hsl(39, 53%, 82%)',
+  'Celeste': 'hsl(197, 71%, 73%)',
+  'Dorado': 'hsl(45, 89%, 55%)',
+  'Plateado': 'hsl(210, 17%, 79%)',
+  'Cian': 'hsl(180, 70%, 50%)', // Adjusted for better visibility
+  'Magenta': 'hsl(300, 76%, 58%)', // Adjusted
+  'Lima': 'hsl(80, 61%, 60%)', // Adjusted
+  'Oliva': 'hsl(60, 39%, 41%)',
+  'Turquesa': 'hsl(174, 72%, 56%)',
+  'Índigo': 'hsl(240, 50%, 45%)', // Adjusted
+  'Salmón': 'hsl(6, 93%, 71%)',
+  'Coral': 'hsl(16, 100%, 63%)',
+  'Lavanda': 'hsl(256, 60%, 75%)',
+  'Menta': 'hsl(150, 54%, 67%)',
+  'Caqui': 'hsl(39, 31%, 56%)',
+  'Borgoña': 'hsl(348, 70%, 40%)',
+  'Fucsia': 'hsl(327, 100%, 54%)',
+  // 'Cuadrille', 'Estampado', 'Multicolor', 'Otro' will use fallback chart colors
+};
+
+
 export async function getColorDistributionStatsAction(): Promise<{ data?: ColorFrequency[]; error?: string }> {
   if (!supabase) return { error: "Error de conexión con la base de datos." };
   try {
@@ -766,28 +803,46 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
       .from('prendas')
       .select('color')
       .eq('is_archived', false)
-      .neq('color', '');
+      .neq('color', ''); // Ensure color is not an empty string
 
     if (error) throw error;
+    if (!prendas) return { data: [] };
 
     const colorCounts: Record<string, number> = {};
     prendas.forEach(p => {
-      if (p.color) {
+      if (p.color) { // p.color is already the ENUM value which is a string
         colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
       }
     });
 
-    const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-    const sortedColors: ColorFrequency[] = Object.entries(colorCounts)
-      .sort(([, a], [, b]) => b - a)
-      .map(([color, count], index) => ({ color, count, fill: chartColors[index % chartColors.length] }));
+    const chartColorsFallback = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+    let fallbackIndex = 0;
 
-    return { data: sortedColors };
+    const colorFrequencyData: ColorFrequency[] = Object.entries(colorCounts)
+      .filter(([, count]) => count > 0) // Only include colors with count > 0
+      .map(([color, count]) => {
+        let fill = PRENDA_COLOR_MAP[color];
+        if (!fill) { // Fallback for colors not in our specific map (e.g., "Estampado", "Otro")
+          fill = chartColorsFallback[fallbackIndex % chartColorsFallback.length];
+          fallbackIndex++;
+        }
+        // For white, add a border to the chart cell for visibility if the chart background is white
+        if (color === 'Blanco') { 
+            // The component itself will handle the border styling for the "Blanco" slice based on its fill.
+            // Here, we just ensure the fill is recognizable as white.
+            fill = 'hsl(0, 0%, 100%)';
+        }
+        return { color, count, fill };
+      })
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+
+    return { data: colorFrequencyData };
   } catch (error) {
     console.error('Error fetching color distribution:', error);
     return { error: error instanceof Error ? error.message : 'Error al obtener la distribución de colores.' };
   }
 }
+
 
 export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageStat[]; error?: string }> {
   if (!supabase) return { error: "Error de conexión con la base de datos." };
@@ -799,17 +854,19 @@ export async function getStyleUsageStatsAction(): Promise<{ data?: StyleUsageSta
       .neq('estilo', '');
 
     if (error) throw error;
+    if (!prendas) return { data: [] };
 
     const styleCounts: Record<string, number> = {};
     prendas.forEach(p => {
       if (p.estilo) {
-        const styleKey = p.estilo.charAt(0).toUpperCase() + p.estilo.slice(1);
+        const styleKey = p.estilo.charAt(0).toUpperCase() + p.estilo.slice(1); // Capitalize
         styleCounts[styleKey] = (styleCounts[styleKey] || 0) + 1;
       }
     });
 
     const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
     const styleUsageStats: StyleUsageStat[] = Object.entries(styleCounts)
+      .filter(([, value]) => value > 0)
       .map(([name, value], index) => ({ name, value, fill: chartColors[index % chartColors.length] }))
       .sort((a, b) => b.value - a.value);
 
@@ -839,14 +896,15 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
 
     const { data, error } = await supabase
       .from('calendario_asignaciones')
-      .select('fecha, tipo_asignacion')
+      .select('fecha, tipo_asignacion') // Only select what's needed
       .gte('fecha', startDate)
       .lte('fecha', endDate);
 
     if (error) throw error;
+    if (!data) return {data: []};
 
     data.forEach(assignment => {
-      const assignmentDate = parseISO(assignment.fecha);
+      const assignmentDate = parseISO(assignment.fecha); // fecha is 'YYYY-MM-DD'
       const monthKey = format(assignmentDate, 'MMM yy', { locale: es });
       if (activityData.hasOwnProperty(monthKey)) {
         activityData[monthKey]++;
@@ -857,7 +915,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
     const timeActivityStats: TimeActivityStat[] = monthLabels.map((label, index) => ({
       date: label,
       count: activityData[label] || 0,
-      fill: chartColors[index % chartColors.length]
+      fill: chartColors[index % chartColors.length] // Assign fill color here
     }));
 
     return { data: timeActivityStats };
@@ -879,15 +937,18 @@ export async function getIntelligentInsightDataAction(): Promise<{data?: Intelli
         if(prendasResult.error || !prendasResult.data) {
             return { error: prendasResult.error || "No se pudieron obtener prendas."};
         }
-        const totalPrendas = prendasResult.data.filter(p => !p.is_archived && p.estilo).length;
+        const activePrendas = prendasResult.data.filter(p => !p.is_archived && p.estilo);
+        const totalPrendasConEstilo = activePrendas.length;
 
         let dominantStyle: { name: string; percentage: number } | undefined = undefined;
 
-        if (totalPrendas > 0 && styleStatsResult.data.length > 0) {
-            const mostUsedStyle = styleStatsResult.data[0];
-            const percentage = (mostUsedStyle.value / totalPrendas) * 100;
-            if (percentage > 60) {
-                dominantStyle = { name: mostUsedStyle.name, percentage: Math.round(percentage) };
+        if (totalPrendasConEstilo > 0 && styleStatsResult.data.length > 0) {
+            const mostUsedStyle = styleStatsResult.data[0]; // styleStatsResult.data is already sorted
+            if (mostUsedStyle.value > 0) { // Ensure the most used style actually has prendas
+              const percentage = (mostUsedStyle.value / totalPrendasConEstilo) * 100;
+              if (percentage > 50) { // Consider it dominant if over 50% of prendas with style
+                  dominantStyle = { name: mostUsedStyle.name, percentage: Math.round(percentage) };
+              }
             }
         }
 
