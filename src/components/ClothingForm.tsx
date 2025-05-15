@@ -29,6 +29,7 @@ import { CLOTHING_TYPES, SEASONS, PRENDA_COLORS } from '@/types';
 import { styleOptions } from '@/components/StyleSelection';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { parseISO, isValid } from 'date-fns'; // Added import
 
 // Zod schema using 'modelo' and 'fechacompra' for form validation
 const prendaFormSchema = z.object({
@@ -37,8 +38,8 @@ const prendaFormSchema = z.object({
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
   modelo: z.string().min(1, { message: 'El modelo es requerido.' }),
   temporada: z.string().min(1, { message: 'Por favor selecciona una temporada.' }),
-  fechacompra: z.string().refine((val) => { // Kept refine for optional but valid date
-    if (!val) return true; // Allow empty string for optional
+  fechacompra: z.string().refine((val) => { 
+    if (!val) return true; 
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
@@ -69,7 +70,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
     defaultValues: { 
       nombre: initialData?.nombre || '',
       tipo: initialData?.tipo || '',
-      color: initialData?.color as typeof PRENDA_COLORS[number] || PRENDA_COLORS[0], // Default to first color or handle if initialData.color is not in PRENDA_COLORS
+      color: initialData?.color as typeof PRENDA_COLORS[number] || PRENDA_COLORS[0],
       modelo: initialData?.modelo || '',
       temporada: initialData?.temporada || '',
       fechacompra: initialData?.fechacompra || '', 
@@ -83,10 +84,9 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
   React.useEffect(() => {
     if (isOpen) { 
       if (initialData) {
-        // Ensure initialData.color is a valid PrendaColor for the enum
         const validInitialColor = PRENDA_COLORS.includes(initialData.color as any) 
           ? initialData.color as typeof PRENDA_COLORS[number]
-          : PRENDA_COLORS[0]; // Fallback to the first color if initial is not in the list
+          : PRENDA_COLORS[0]; 
         form.reset({ 
           nombre: initialData.nombre,
           tipo: initialData.tipo,
@@ -263,3 +263,4 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
     </Dialog>
   );
 }
+
