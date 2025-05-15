@@ -23,6 +23,24 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
+// Helper to map DB record (with talla, ocasion) to client Prenda (with modelo, fechacompra)
+function mapDbPrendaToClient(dbRecord: any): Prenda {
+  return {
+    id: Number(dbRecord.id),
+    created_at: String(dbRecord.created_at),
+    nombre: dbRecord.nombre,
+    tipo: dbRecord.tipo,
+    color: dbRecord.color,
+    modelo: dbRecord.talla, // Map talla to modelo
+    temporada: dbRecord.temporada,
+    fechacompra: dbRecord.ocasion, // Map ocasion to fechacompra
+    imagen_url: dbRecord.imagen_url,
+    temperatura_min: dbRecord.temperatura_min,
+    temperatura_max: dbRecord.temperatura_max,
+    estilo: dbRecord.estilo,
+  };
+}
+
 export async function getAISuggestionAction(
   params: GetOutfitSuggestionParams
 ): Promise<SuggestedOutfit | { error: string }> {
@@ -33,21 +51,20 @@ export async function getAISuggestionAction(
       return { error: "Supabase client not initialized. Cannot fetch closet items." };
     }
 
-    // 1. Fetch all prendas from Supabase
-    const prendasResult = await getPrendasAction(); // Uses the existing action
+    const prendasResult = await getPrendasAction(); 
     if (prendasResult.error || !prendasResult.data) {
       return { error: prendasResult.error || "Could not fetch items from your closet." };
     }
-    const allPrendas = prendasResult.data;
+    const allClientPrendas = prendasResult.data;
 
-    if (allPrendas.length === 0) {
+    if (allClientPrendas.length === 0) {
       return { error: "Your closet is empty. Please add some clothing items first." };
     }
 
-    // 2. Filter prendas
     const [minUserTemp, maxUserTemp] = temperature;
 
-    const filteredPrendas = allPrendas.filter(p => {
+    // Filter based on client-side Prenda structure (which uses 'estilo', 'temperatura_min', 'temperatura_max')
+    const filteredPrendas = allClientPrendas.filter(p => {
       const styleMatch = p.estilo.toLowerCase() === styleId.toLowerCase();
       const tempMatch = (
         typeof p.temperatura_min === 'number' &&
@@ -55,7 +72,6 @@ export async function getAISuggestionAction(
         p.temperatura_min <= maxUserTemp &&
         p.temperatura_max >= minUserTemp
       );
-      // If temp range not set on item, it's not considered for temp-specific suggestions
       return styleMatch && tempMatch;
     });
 
@@ -63,18 +79,16 @@ export async function getAISuggestionAction(
       return { error: "No suitable items found in your closet for the selected style and temperature." };
     }
 
-    // 3. Select a few items to form an outfit (e.g., up to 3-4 items)
     const shuffledPrendas = shuffleArray(filteredPrendas);
-    const outfitItemCount = Math.min(shuffledPrendas.length, 3); // Suggest up to 3 items
-    const selectedDbItems = shuffledPrendas.slice(0, outfitItemCount);
+    const outfitItemCount = Math.min(shuffledPrendas.length, 3); 
+    const selectedClientItems = shuffledPrendas.slice(0, outfitItemCount);
 
-    if (selectedDbItems.length === 0) {
+    if (selectedClientItems.length === 0) {
          return { error: "Could not select any items for an outfit from your closet matching the criteria." };
     }
 
-    // 4. Map Prenda[] to OutfitItem[]
-    const outfitItems: OutfitItem[] = selectedDbItems.map(p => ({
-      id: p.id.toString(), // Prenda ID is number, OutfitItem ID is string
+    const outfitItems: OutfitItem[] = selectedClientItems.map(p => ({
+      id: p.id.toString(), 
       name: p.nombre,
       imageUrl: p.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(p.nombre)}`,
       category: p.tipo,
@@ -86,7 +100,7 @@ export async function getAISuggestionAction(
 
     const aiInput: GenerateOutfitExplanationInput = {
       temperatureRange: temperatureRangeString,
-      selectedStyle: styleId.charAt(0).toUpperCase() + styleId.slice(1), // Capitalize styleId for the AI
+      selectedStyle: styleId.charAt(0).toUpperCase() + styleId.slice(1), 
       outfitDescription: outfitDescription,
       userClosetInformationNeeded: useClosetInfo,
     };
@@ -104,14 +118,14 @@ export async function getAISuggestionAction(
   }
 }
 
-// --- Closet Management Actions ---
-const PrendaSchema = z.object({
+// Schema for form data validation (uses modelo, fechacompra)
+const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.string().min(1, "El tipo es requerido."),
   color: z.string().min(1, "El color es requerido."),
-  talla: z.string().min(1, "La talla es requerida."),
+  modelo: z.string().min(1, "El modelo es requerido."), // Changed from talla
   temporada: z.string().min(1, "La temporada es requerida."),
-  ocasion: z.string().min(1, "La ocasión es requerida."),
+  fechacompra: z.string().min(1, "La fecha de compra es requerida."), // Changed from ocasion
   imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
@@ -122,7 +136,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
   if (!supabase) return { error: "Supabase client not initialized." };
 
   const rawFormData = Object.fromEntries(formData.entries());
-  const validatedFields = PrendaSchema.safeParse(rawFormData);
+  const validatedFields = PrendaFormSchema.safeParse(rawFormData);
 
   if (!validatedFields.success) {
     return {
@@ -131,15 +145,16 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     };
   }
   
-  const { nombre, tipo, color, talla, temporada, ocasion, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
+  const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
 
-  const newItem = {
+  // Item to be inserted into DB (uses talla, ocasion)
+  const itemToInsertToDb = {
     nombre,
     tipo,
     color,
-    talla,
+    talla: modelo, // Map modelo to talla
     temporada,
-    ocasion,
+    ocasion: fechacompra, // Map fechacompra to ocasion
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -147,17 +162,17 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
   };
 
   try {
-    const { data, error } = await supabase
+    const { data: dbData, error } = await supabase
       .from('prendas')
-      .insert([newItem])
+      .insert([itemToInsertToDb])
       .select()
       .single();
 
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // Also revalidate home page if suggestions depend on closet changes
-    return { data: data as Prenda };
+    revalidatePath('/'); 
+    return { data: mapDbPrendaToClient(dbData) };
   } catch (error) {
     console.error('Error adding prenda:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while adding the item.';
@@ -169,13 +184,15 @@ export async function getPrendasAction(): Promise<{ data?: Prenda[]; error?: str
   if (!supabase) return { error: "Supabase client not initialized.", data: [] };
   
   try {
-    const { data, error } = await supabase
+    const { data: dbData, error } = await supabase
       .from('prendas')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return { data: data as Prenda[] };
+    
+    const clientData: Prenda[] = dbData.map(mapDbPrendaToClient);
+    return { data: clientData };
   } catch (error) {
     console.error('Error fetching prendas:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while fetching items.';
@@ -187,7 +204,7 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
   if (!supabase) return { error: "Supabase client not initialized." };
 
   const rawFormData = Object.fromEntries(formData.entries());
-  const validatedFields = PrendaSchema.safeParse(rawFormData);
+  const validatedFields = PrendaFormSchema.safeParse(rawFormData);
 
   if (!validatedFields.success) {
     return {
@@ -196,15 +213,16 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     };
   }
 
-  const { nombre, tipo, color, talla, temporada, ocasion, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
+  const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
   
-  const updatedItem = {
+  // Item to be updated in DB (uses talla, ocasion)
+  const itemToUpdateInDb = {
     nombre,
     tipo,
     color,
-    talla,
+    talla: modelo, // Map modelo to talla
     temporada,
-    ocasion,
+    ocasion: fechacompra, // Map fechacompra to ocasion
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -212,9 +230,9 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
   };
 
   try {
-    const { data, error } = await supabase
+    const { data: dbData, error } = await supabase
       .from('prendas')
-      .update(updatedItem)
+      .update(itemToUpdateInDb)
       .eq('id', itemId)
       .select()
       .single();
@@ -222,8 +240,8 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // Also revalidate home page
-    return { data: data as Prenda };
+    revalidatePath('/'); 
+    return { data: mapDbPrendaToClient(dbData) };
   } catch (error) {
     console.error('Error updating prenda:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while updating the item.';
@@ -243,7 +261,7 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); // Also revalidate home page
+    revalidatePath('/'); 
     return { success: true };
   } catch (error) {
     console.error('Error deleting prenda:', error);
@@ -251,3 +269,4 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     return { error: errorMessage };
   }
 }
+

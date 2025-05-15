@@ -22,29 +22,29 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialogTrigger, 
 } from '@/components/ui/alert-dialog';
-import { Card, CardContent } from '@/components/ui/card'; // Using ShadCN Card
-import { ClothingForm, type PrendaFormData } from '@/components/ClothingForm'; // Updated to PrendaFormData
-import { addPrendaAction, getPrendasAction, updatePrendaAction, deletePrendaAction } from '@/app/actions'; // Updated action names
-import type { Prenda } from '@/types'; // Updated to Prenda
+import { Card, CardContent } from '@/components/ui/card'; 
+import { ClothingForm, type PrendaFormData } from '@/components/ClothingForm'; 
+import { addPrendaAction, getPrendasAction, updatePrendaAction, deletePrendaAction } from '@/app/actions'; 
+import type { Prenda } from '@/types'; 
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, PackageOpen } from 'lucide-react';
 
 export default function ClosetPage() {
-  const [items, setItems] = React.useState<Prenda[]>([]); // Updated to Prenda[]
+  const [items, setItems] = React.useState<Prenda[]>([]); 
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [editingItem, setEditingItem] = React.useState<Prenda | null>(null); // Updated to Prenda
-  const [itemToDelete, setItemToDelete] = React.useState<Prenda | null>(null); // Updated to Prenda
+  const [editingItem, setEditingItem] = React.useState<Prenda | null>(null); 
+  const [itemToDelete, setItemToDelete] = React.useState<Prenda | null>(null); 
 
   const { toast } = useToast();
 
   const fetchItems = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    const result = await getPrendasAction(); // Updated action name
+    const result = await getPrendasAction(); 
     if (result.error) {
       setError(result.error);
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
@@ -58,15 +58,20 @@ export default function ClosetPage() {
     fetchItems();
   }, [fetchItems]);
 
-  const handleFormSubmit = async (data: PrendaFormData, itemId?: number) => { // Updated itemId to number
+  const handleFormSubmit = async (data: PrendaFormData, itemId?: number) => { 
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, String(value));
+         // Ensure Date objects are converted to ISO string if type="date" input provides them
+        if (value instanceof Date) {
+          formData.append(key, value.toISOString().split('T')[0]);
+        } else {
+          formData.append(key, String(value));
+        }
       }
     });
     
-    const action = itemId !== undefined ? updatePrendaAction(itemId, formData) : addPrendaAction(formData); // Updated action names
+    const action = itemId !== undefined ? updatePrendaAction(itemId, formData) : addPrendaAction(formData); 
     const result = await action;
 
     if (!result.error) {
@@ -78,7 +83,7 @@ export default function ClosetPage() {
   const handleDeleteItem = async () => {
     if (!itemToDelete) return;
 
-    const result = await deletePrendaAction(itemToDelete.id); // Updated action name, id is now number
+    const result = await deletePrendaAction(itemToDelete.id); 
     if (result.error) {
       toast({ title: 'Error', description: result.error, variant: 'destructive' });
     } else {
@@ -88,7 +93,7 @@ export default function ClosetPage() {
     setItemToDelete(null); 
   };
 
-  const openEditForm = (item: Prenda) => { // Updated to Prenda
+  const openEditForm = (item: Prenda) => { 
     setEditingItem(item);
     setIsFormOpen(true);
   };
@@ -151,8 +156,9 @@ export default function ClosetPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Color</TableHead>
-                  <TableHead>Talla</TableHead>
+                  <TableHead>Modelo</TableHead> {/* Was Talla */}
                   <TableHead>Estilo</TableHead>
+                  <TableHead>Fecha Compra</TableHead> {/* Was Ocasion */}
                   <TableHead className="text-right w-[120px]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -173,8 +179,9 @@ export default function ClosetPage() {
                     <TableCell className="font-medium">{item.nombre}</TableCell>
                     <TableCell>{item.tipo}</TableCell>
                     <TableCell>{item.color}</TableCell>
-                    <TableCell>{item.talla}</TableCell>
+                    <TableCell>{item.modelo}</TableCell> {/* Was item.talla */}
                     <TableCell>{item.estilo}</TableCell>
+                    <TableCell>{item.fechacompra}</TableCell> {/* Was item.ocasion */}
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" onClick={() => openEditForm(item)} className="mr-2 hover:text-primary">
                         <Edit className="h-4 w-4" />
@@ -226,3 +233,4 @@ export default function ClosetPage() {
     </div>
   );
 }
+
