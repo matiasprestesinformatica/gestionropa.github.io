@@ -6,6 +6,7 @@ import type { SuggestedOutfit, OutfitItem, Prenda } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { format, parseISO } from 'date-fns'; // Import date-fns for formatting
 
 interface GetOutfitSuggestionParams {
   temperature: [number, number];
@@ -24,21 +25,42 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 // Helper to map DB record to client Prenda
-// Ahora los nombres de columna de la BD (modelo, fechacompra) coinciden con los de Prenda
 function mapDbPrendaToClient(dbRecord: any): Prenda {
+  let formattedFechacompra = ''; 
+  if (dbRecord.fechacompra) {
+    try {
+      // Supabase client might return date as 'YYYY-MM-DD' string or Date object.
+      // If it's already a 'YYYY-MM-DD' string, parseISO will handle it.
+      // If it's a Date object, format will handle it.
+      const dateObj = typeof dbRecord.fechacompra === 'string' ? parseISO(dbRecord.fechacompra) : new Date(dbRecord.fechacompra);
+      if (!isNaN(dateObj.getTime())) {
+         // No need to add a day if Supabase returns it as 'YYYY-MM-DD' for a DATE type
+        formattedFechacompra = format(dateObj, 'yyyy-MM-dd');
+      } else {
+        console.warn(`Could not parse date for fechacompra (invalid date): ${dbRecord.fechacompra}`);
+        formattedFechacompra = String(dbRecord.fechacompra); // Fallback if parsing fails
+      }
+    } catch (e) {
+      console.warn(`Error parsing date for fechacompra: ${dbRecord.fechacompra}`, e);
+      formattedFechacompra = String(dbRecord.fechacompra); // Fallback on error
+    }
+  }
+
+
   return {
     id: Number(dbRecord.id),
     created_at: String(dbRecord.created_at),
     nombre: dbRecord.nombre,
     tipo: dbRecord.tipo,
     color: dbRecord.color,
-    modelo: dbRecord.modelo, // Directamente desde la BD
+    modelo: dbRecord.modelo,
     temporada: dbRecord.temporada,
-    fechacompra: dbRecord.fechacompra, // Directamente desde la BD
+    fechacompra: formattedFechacompra,
     imagen_url: dbRecord.imagen_url,
     temperatura_min: dbRecord.temperatura_min,
     temperatura_max: dbRecord.temperatura_max,
     estilo: dbRecord.estilo,
+    is_archived: dbRecord.is_archived || false, // Ensure is_archived is always boolean
   };
 }
 
@@ -56,10 +78,12 @@ export async function getAISuggestionAction(
     if (prendasResult.error || !prendasResult.data) {
       return { error: prendasResult.error || "Could not fetch items from your closet." };
     }
-    const allClientPrendas = prendasResult.data;
+    // Filter out archived items for suggestions
+    const allClientPrendas = prendasResult.data.filter(p => !p.is_archived);
+
 
     if (allClientPrendas.length === 0) {
-      return { error: "Your closet is empty. Please add some clothing items first." };
+      return { error: "Your closet is empty or has no active items. Please add some clothing items first." };
     }
 
     const [minUserTemp, maxUserTemp] = temperature;
@@ -69,8 +93,8 @@ export async function getAISuggestionAction(
       const tempMatch = (
         typeof p.temperatura_min === 'number' &&
         typeof p.temperatura_max === 'number' &&
-        p.temperatura_min <= maxUserTemp &&
-        p.temperatura_max >= minUserTemp
+        p.temperatura_min <= maxUserTemp && 
+        p.temperatura_max >= minUserTemp  
       );
       return styleMatch && tempMatch;
     });
@@ -125,11 +149,12 @@ const PrendaFormSchema = z.object({
   color: z.string().min(1, "El color es requerido."),
   modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
-  fechacompra: z.string().min(1, "La fecha de compra es requerida."),
+  fechacompra: z.string().min(1, "La fecha de compra es requerida."), 
   imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
   estilo: z.string().min(1, "El estilo es requerido."),
+  is_archived: z.preprocess(val => val === 'on' || val === 'true' || val === true, z.boolean()).optional().default(false),
 });
 
 export async function addPrendaAction(formData: FormData): Promise<{ data?: Prenda; error?: string; validationErrors?: z.ZodIssue[] }> {
@@ -145,20 +170,20 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     };
   }
   
-  const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
+  const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo, is_archived } = validatedFields.data;
 
-  // Item to be inserted into DB - no más mapeo necesario, los nombres coinciden
   const itemToInsertToDb = {
     nombre,
     tipo,
     color,
-    modelo, // Nombre de columna en BD es 'modelo'
+    modelo, 
     temporada,
-    fechacompra, // Nombre de columna en BD es 'fechacompra'
+    fechacompra, 
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
     estilo,
+    is_archived,
   };
 
   try {
@@ -171,7 +196,8 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); 
+    revalidatePath('/dashboard'); 
+    revalidatePath('/archivo');
     return { data: mapDbPrendaToClient(dbData) };
   } catch (error) {
     console.error('Error adding prenda:', error);
@@ -213,20 +239,20 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     };
   }
 
-  const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo } = validatedFields.data;
+  const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo, is_archived } = validatedFields.data;
   
-  // Item to be updated in DB - no más mapeo necesario
-  const itemToUpdateInDb = {
+  const itemToUpdateInDb: Partial<Omit<Prenda, 'id' | 'created_at'>> = {
     nombre,
     tipo,
     color,
-    modelo, // Nombre de columna en BD es 'modelo'
+    modelo,
     temporada,
-    fechacompra, // Nombre de columna en BD es 'fechacompra'
+    fechacompra,
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
     estilo,
+    is_archived, // is_archived is now part of the schema and will be included if present
   };
 
   try {
@@ -240,7 +266,8 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); 
+    revalidatePath('/dashboard');
+    revalidatePath('/archivo');
     return { data: mapDbPrendaToClient(dbData) };
   } catch (error) {
     console.error('Error updating prenda:', error);
@@ -261,7 +288,8 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/'); 
+    revalidatePath('/dashboard');
+    revalidatePath('/archivo');
     return { success: true };
   } catch (error) {
     console.error('Error deleting prenda:', error);
@@ -269,4 +297,3 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     return { error: errorMessage };
   }
 }
-
