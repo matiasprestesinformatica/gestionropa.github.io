@@ -1,0 +1,51 @@
+id,created_at,nombre,tipo,color,modelo,temporada,fechacompra,imagen_url,temperatura_min,temperatura_max,estilo
+1,2024-01-15 10:00:00+00,Camiseta Clásica,Camisa,Blanco,M,Verano,2023-07-15,/ropa/camiseta_clasica_blanca.png,20,35,casual
+2,2024-01-16 10:05:00+00,Pantalón Chino,Pantalón,Beige,32,Todo el Año,2023-03-10,/ropa/pantalon_chino_beige.png,15,28,casual
+3,2024-01-17 10:10:00+00,Vestido Verano,Vestido,Azul Floral,S,Verano,2023-06-01,/ropa/vestido_verano_azul_floral.png,22,38,bohemian
+4,2024-01-18 10:15:00+00,Chaqueta Deportiva,Chaqueta,Negro,L,Invierno,2023-01-20,/ropa/chaqueta_deportiva_negra.png,5,15,sporty
+5,2024-01-19 10:20:00+00,Suéter Lana,Suéter,Gris,M,Invierno,2022-11-05,/ropa/sueter_lana_gris.png,-5,10,casual
+6,2024-01-20 10:25:00+00,Zapatos Cuero,Zapatos,Marrón,42,Todo el Año,2023-09-01,/ropa/zapatos_cuero_marron.png,10,30,formal
+7,2024-01-21 10:30:00+00,Falda Plisada,Falda,Rosa,S,Primavera,2023-04-10,/ropa/falda_plisada_rosa.png,18,26,casual
+8,2024-01-22 10:35:00+00,Blusa Seda,Camisa,Crema,M,Primavera,2023-05-02,/ropa/blusa_seda_crema.png,16,28,formal
+9,2024-01-23 10:40:00+00,Shorts Denim,Pantalón,Azul Oscuro,30,Verano,2023-08-15,/ropa/shorts_denim_azul_oscuro.png,25,40,casual
+10,2024-01-24 10:45:00+00,Abrigo Lana,Chaqueta,Negro,L,Invierno,2022-12-01,/ropa/abrigo_lana_negro.png,-10,8,formal
+11,2024-01-25 10:50:00+00,Zapatillas Correr,Zapatos,Gris y Naranja,43,Todo el Año,2023-02-20,/ropa/zapatillas_correr_gris_naranja.png,0,30,sporty
+12,2024-01-26 10:55:00+00,Polo Algodón,Camisa,Rojo,L,Verano,2023-07-01,/ropa/polo_algodon_rojo.png,20,35,casual
+13,2024-01-27 11:00:00+00,Bufanda Cachemira,Accesorio,Beige,Única,Invierno,2022-11-10,/ropa/bufanda_cachemira_beige.png,-5,15,casual
+14,2024-01-28 11:05:00+00,Gorra Béisbol,Accesorio,Negro,Única,Todo el Año,2023-01-01,/ropa/gorra_beisbol_negra.png,10,35,casual
+15,2024-01-29 11:10:00+00,Traje Lino,Conjunto,Azul Claro,M,Verano,2023-06-15,/ropa/traje_lino_azul_claro.png,22,35,formal
+16,2024-01-30 11:15:00+00,Cárdigan Punto,Suéter,Verde Oliva,S,Otoño,2023-09-25,/ropa/cardigan_punto_verde_oliva.png,12,22,casual
+17,2024-01-31 11:20:00+00,Botas Cuero,Zapatos,Negro,41,Invierno,2022-10-15,/ropa/botas_cuero_negras.png,-5,12,formal
+18,2024-02-01 11:25:00+00,Camisa Leñador,Camisa,Rojo y Negro,L,Otoño,2023-10-02,/ropa/camisa_lenador_rojo_negro.png,10,20,casual
+19,2024-02-02 11:30:00+00,Leggings Deportivos,Pantalón,Negro,M,Todo el Año,2023-03-01,/ropa/leggings_deportivos_negros.png,5,25,sporty
+20,2024-02-03 11:35:00+00,Sombrero Paja,Accesorio,Natural,Única,Verano,2023-07-20,/ropa/sombrero_paja_natural.png,25,40,bohemian
+21,2024-02-04 11:40:00+00,Camiseta Gráfica,Camisa,Negro,M,Todo el Año,2023-05-10,/ropa/camiseta_grafica_negra.png,15,30,casual
+22,2024-02-05 11:45:00+00,Pantalón Cargo,Pantalón,Verde Militar,34,Primavera,2023-04-01,/ropa/pantalon_cargo_verde_militar.png,16,26,casual
+23,2024-02-06 11:50:00+00,Vestido Largo,Vestido,Estampado Floral,L,Primavera,2023-05-05,/ropa/vestido_largo_estampado_floral.png,18,28,bohemian
+24,2024-02-07 11:55:00+00,Chaqueta Vaquera,Chaqueta,Azul Medio,M,Todo el Año,2022-09-15,/ropa/chaqueta_vaquera_azul_medio.png,12,25,casual
+25,2024-02-08 12:00:00+00,Suéter Cuello Alto,Suéter,Negro,S,Invierno,2022-11-20,/ropa/sueter_cuello_alto_negro.png,-5,10,formal
+26,2024-02-09 12:05:00+00,Mocasines Cuero,Zapatos,Negro,42,Otoño,2023-09-10,/ropa/mocasines_cuero_negros.png,10,22,formal
+27,2024-02-10 12:10:00+00,Minifalda Cuadros,Falda,Rojo y Negro,M,Otoño,2023-10-15,/ropa/minifalda_cuadros_rojo_negro.png,12,20,casual
+28,2024-02-11 12:15:00+00,Camisa Oxford,Camisa,Azul Cielo,L,Todo el Año,2023-01-30,/ropa/camisa_oxford_azul_cielo.png,15,28,formal
+29,2024-02-12 12:20:00+00,Pantalones Jogging,Pantalón,Gris Jaspeado,M,Todo el Año,2023-02-01,/ropa/pantalones_jogging_gris_jaspeado.png,10,25,sporty
+30,2024-02-13 12:25:00+00,Gabardina Clásica,Chaqueta,Beige,M,Primavera,2023-03-10,/ropa/gabardina_clasica_beige.png,8,18,formal
+31,2024-02-14 12:30:00+00,Sandalias Verano,Zapatos,Marrón Claro,39,Verano,2023-06-20,/ropa/sandalias_verano_marron_claro.png,25,40,casual
+32,2024-02-15 12:35:00+00,Sudadera Capucha,Suéter,Gris Oscuro,L,Otoño,2023-09-05,/ropa/sudadera_capucha_gris_oscuro.png,10,20,sporty
+33,2024-02-16 12:40:00+00,Cinturón Cuero,Accesorio,Negro,Única,Todo el Año,2022-08-01,/ropa/cinturon_cuero_negro.png,0,40,casual
+34,2024-02-17 12:45:00+00,Pañuelo Seda,Accesorio,Estampado,Única,Todo el Año,2023-05-15,/ropa/panuelo_seda_estampado.png,10,30,formal
+35,2024-02-18 12:50:00+00,Bermudas Lino,Pantalón,Blanco,32,Verano,2023-07-01,/ropa/bermudas_lino_blancas.png,24,38,casual
+36,2024-02-19 12:55:00+00,Top Encaje,Camisa,Negro,S,Verano,2023-08-10,/ropa/top_encaje_negro.png,20,32,formal
+37,2024-02-20 13:00:00+00,Chaqueta Bombardero,Chaqueta,Verde Oliva,M,Otoño,2023-10-01,/ropa/chaqueta_bombardero_verde_oliva.png,10,20,casual
+38,2024-02-21 13:05:00+00,Camiseta Marinera,Camisa,Blanco y Azul,M,Primavera,2023-04-20,/ropa/camiseta_marinera_blanco_azul.png,16,28,casual
+39,2024-02-22 13:10:00+00,Pantalones Palazzo,Pantalón,Negro,L,Verano,2023-06-05,/ropa/pantalones_palazzo_negros.png,20,30,bohemian
+40,2024-02-23 13:15:00+00,Chaleco Sastre,Chaqueta,Gris Oscuro,M,Otoño,2023-09-18,/ropa/chaleco_sastre_gris_oscuro.png,14,24,formal
+41,2024-02-24 13:20:00+00,Kimono Estampado,Otro,Flores Multicolor,Única,Primavera,2023-05-25,/ropa/kimono_estampado_flores_multicolor.png,18,30,bohemian
+42,2024-02-25 13:25:00+00,Body Algodón,Camisa,Negro,S,Todo el Año,2023-02-10,/ropa/body_algodon_negro.png,15,28,casual
+43,2024-02-26 13:30:00+00,Falda Midi Satinada,Falda,Champagne,M,Otoño,2023-10-20,/ropa/falda_midi_satinada_champagne.png,15,25,formal
+44,2024-02-27 13:35:00+00,Sudadera Cremallera,Suéter,Azul Marino,L,Invierno,2022-12-10,/ropa/sudadera_cremallera_azul_marino.png,5,18,sporty
+45,2024-02-28 13:40:00+00,Camisa Hawaiana,Camisa,Estampado Tropical,M,Verano,2023-07-12,/ropa/camisa_hawaiana_estampado_tropical.png,22,36,casual
+46,2024-03-01 13:45:00+00,Pantalón Pinzas,Pantalón,Gris Claro,30,Todo el Año,2023-03-05,/ropa/pantalon_pinzas_gris_claro.png,15,28,formal
+47,2024-03-02 13:50:00+00,Vestido Camisero,Vestido,Blanco,M,Primavera,2023-04-18,/ropa/vestido_camisero_blanco.png,18,28,casual
+48,2024-03-03 13:55:00+00,Chubasquero Ligero,Chaqueta,Amarillo,L,Primavera,2023-03-28,/ropa/chubasquero_ligero_amarillo.png,10,20,casual
+49,2024-03-04 14:00:00+00,Suéter Rayas,Suéter,Azul y Blanco,S,Otoño,2023-09-12,/ropa/sueter_rayas_azul_blanco.png,14,24,casual
+50,2024-03-05 14:05:00+00,Zapatos Tacón,Zapatos,Negro,39,Todo el Año,2023-01-05,/ropa/zapatos_tacon_negro.png,10,30,formal
