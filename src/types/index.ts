@@ -14,13 +14,13 @@ export interface OutfitItem {
   imageUrl: string;
   category: string; 
   aiHint: string; 
-  color?: string; // Optional: Add color to outfit items for ColorSwatch
+  color?: string;
 }
 
 export interface SuggestedOutfit {
   items: OutfitItem[];
   explanation: string;
-  previewImageUrl?: string; // Optional URL for a main preview image of the outfit
+  previewImageUrl?: string;
 }
 
 // --- Closet Management Types ---
@@ -32,7 +32,7 @@ export interface Prenda {
   color: string;
   modelo: string; 
   temporada: string;
-  fechacompra: string; 
+  fechacompra: string; // Stored as TEXT or DATE in DB, handled as string YYYY-MM-DD in form
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
@@ -48,14 +48,24 @@ export type TemporadaPrenda = typeof SEASONS[number];
 
 export type EstiloPrenda = StyleOption['id'];
 
+
 // --- Looks Page Types ---
 export interface Look {
-  id: string;
-  name: string;
-  description?: string;
-  items: Prenda[]; 
-  imageUrl?: string; 
+  id: number;
   created_at: string;
+  nombre: string;
+  descripcion?: string | null;
+  estilo: string;
+  imagen_url?: string | null;
+  prendas: Prenda[]; // Array of full Prenda objects
+}
+
+export interface LookFormData {
+  nombre: string;
+  descripcion?: string;
+  estilo: string;
+  imagen_url?: string;
+  prenda_ids: number[]; // Array of Prenda IDs
 }
 
 // --- Calendar Page Types ---
@@ -98,10 +108,10 @@ export interface ColorFrequency {
 
 // --- HomePage Enhancement Types ---
 export interface HistoricalSuggestion {
-  id: string; // Unique ID, e.g., timestamp or a generated UUID
-  timestamp: number; // For sorting
+  id: string; 
+  timestamp: number; 
   temperature: [number, number];
   selectedStyle: string;
   useClosetInfo: boolean;
-  suggestion: SuggestedOutfit; // The actual suggestion (items, explanation)
+  suggestion: SuggestedOutfit; 
 }

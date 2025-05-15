@@ -2,11 +2,11 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, Prenda } from '@/types';
+import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { format, parseISO } from 'date-fns'; // Import date-fns for formatting
+import { format, parseISO, isValid } from 'date-fns';
 
 interface GetOutfitSuggestionParams {
   temperature: [number, number];
@@ -14,7 +14,6 @@ interface GetOutfitSuggestionParams {
   useClosetInfo: boolean;
 }
 
-// Helper function to shuffle an array (Fisher-Yates shuffle)
 function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -24,43 +23,44 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
-// Helper to map DB record to client Prenda
 function mapDbPrendaToClient(dbRecord: any): Prenda {
-  let formattedFechacompra = ''; 
+  let formattedFechacompra = '';
   if (dbRecord.fechacompra) {
     try {
-      // Supabase client might return date as 'YYYY-MM-DD' string or Date object.
-      // If it's already a 'YYYY-MM-DD' string, parseISO will handle it.
-      // If it's a Date object, format will handle it.
-      const dateObj = typeof dbRecord.fechacompra === 'string' ? parseISO(dbRecord.fechacompra) : new Date(dbRecord.fechacompra);
-      if (!isNaN(dateObj.getTime())) {
-         // No need to add a day if Supabase returns it as 'YYYY-MM-DD' for a DATE type
+      const dateCandidate = dbRecord.fechacompra;
+      // Check if it's already a YYYY-MM-DD string or a Date object
+      const dateObj = typeof dateCandidate === 'string' && dateCandidate.match(/^\d{4}-\d{2}-\d{2}$/) 
+                      ? parseISO(dateCandidate) 
+                      : new Date(dateCandidate);
+
+      if (isValid(dateObj)) {
         formattedFechacompra = format(dateObj, 'yyyy-MM-dd');
       } else {
-        console.warn(`Could not parse date for fechacompra (invalid date): ${dbRecord.fechacompra}`);
-        formattedFechacompra = String(dbRecord.fechacompra); // Fallback if parsing fails
+        // If it's not a valid date or not in YYYY-MM-DD, keep original string if it's not null/undefined
+        // This handles cases where 'ocasion' might still have old text values.
+        formattedFechacompra = typeof dateCandidate === 'string' ? dateCandidate : '';
+         console.warn(`Could not parse date for fechacompra (invalid date): ${dbRecord.fechacompra}. Using original value or empty string.`);
       }
     } catch (e) {
       console.warn(`Error parsing date for fechacompra: ${dbRecord.fechacompra}`, e);
-      formattedFechacompra = String(dbRecord.fechacompra); // Fallback on error
+      formattedFechacompra = typeof dbRecord.fechacompra === 'string' ? dbRecord.fechacompra : '';
     }
   }
-
 
   return {
     id: Number(dbRecord.id),
     created_at: String(dbRecord.created_at),
-    nombre: dbRecord.nombre,
-    tipo: dbRecord.tipo,
-    color: dbRecord.color,
-    modelo: dbRecord.modelo,
-    temporada: dbRecord.temporada,
-    fechacompra: formattedFechacompra,
-    imagen_url: dbRecord.imagen_url,
+    nombre: dbRecord.nombre || '',
+    tipo: dbRecord.tipo || '',
+    color: dbRecord.color || '',
+    modelo: dbRecord.modelo || '', // This field in DB is 'modelo' (previously 'talla')
+    temporada: dbRecord.temporada || '',
+    fechacompra: formattedFechacompra, // This field in DB is 'fechacompra' (previously 'ocasion')
+    imagen_url: dbRecord.imagen_url || '',
     temperatura_min: dbRecord.temperatura_min,
     temperatura_max: dbRecord.temperatura_max,
-    estilo: dbRecord.estilo,
-    is_archived: dbRecord.is_archived || false, // Ensure is_archived is always boolean
+    estilo: dbRecord.estilo || '',
+    is_archived: dbRecord.is_archived || false,
   };
 }
 
@@ -78,9 +78,8 @@ export async function getAISuggestionAction(
     if (prendasResult.error || !prendasResult.data) {
       return { error: prendasResult.error || "Could not fetch items from your closet." };
     }
-    // Filter out archived items for suggestions
+    
     const allClientPrendas = prendasResult.data.filter(p => !p.is_archived);
-
 
     if (allClientPrendas.length === 0) {
       return { error: "Your closet is empty or has no active items. Please add some clothing items first." };
@@ -116,6 +115,7 @@ export async function getAISuggestionAction(
       name: p.nombre,
       imageUrl: p.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(p.nombre)}`,
       category: p.tipo,
+      color: p.color,
       aiHint: `${p.tipo.toLowerCase()} ${p.color ? p.color.toLowerCase() : ''}`.trim().substring(0,50) || p.nombre.toLowerCase(),
     }));
     
@@ -142,14 +142,15 @@ export async function getAISuggestionAction(
   }
 }
 
-// Schema for form data validation
 const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.string().min(1, "El tipo es requerido."),
   color: z.string().min(1, "El color es requerido."),
   modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
-  fechacompra: z.string().min(1, "La fecha de compra es requerida."), 
+  fechacompra: z.string().refine((val) => !val || isValid(parseISO(val)), { // Allows empty or valid date
+    message: "La fecha de compra debe ser válida o estar vacía.",
+  }).optional().or(z.literal('')), 
   imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
@@ -176,9 +177,9 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     nombre,
     tipo,
     color,
-    modelo, 
+    modelo, // Database column is 'modelo'
     temporada,
-    fechacompra, 
+    fechacompra: fechacompra || null, // Database column is 'fechacompra', ensure null if empty
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -241,18 +242,18 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
 
   const { nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo, is_archived } = validatedFields.data;
   
-  const itemToUpdateInDb: Partial<Omit<Prenda, 'id' | 'created_at'>> = {
+  const itemToUpdateInDb = {
     nombre,
     tipo,
     color,
-    modelo,
+    modelo, // Database column is 'modelo'
     temporada,
-    fechacompra,
+    fechacompra: fechacompra || null, // Database column is 'fechacompra', ensure null if empty
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
     estilo,
-    is_archived, // is_archived is now part of the schema and will be included if present
+    is_archived, 
   };
 
   try {
@@ -290,10 +291,238 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     revalidatePath('/closet');
     revalidatePath('/dashboard');
     revalidatePath('/archivo');
+    revalidatePath('/looks'); // Looks might be affected if a prenda is deleted
     return { success: true };
   } catch (error) {
     console.error('Error deleting prenda:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while deleting the item.';
+    return { error: errorMessage };
+  }
+}
+
+// --- Looks Actions ---
+
+export async function getLooksAction(): Promise<{ data?: Look[]; error?: string }> {
+  if (!supabase) return { error: "Supabase client not initialized.", data: [] };
+  try {
+    const { data: looksData, error: looksError } = await supabase
+      .from('looks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (looksError) throw looksError;
+    if (!looksData) return { data: [] };
+
+    const looksWithPrendas: Look[] = [];
+    for (const look of looksData) {
+      const { data: lookPrendasData, error: lookPrendasError } = await supabase
+        .from('look_prendas')
+        .select('prenda_id')
+        .eq('look_id', look.id);
+
+      if (lookPrendasError) {
+        console.error(`Error fetching prendas for look ${look.id}:`, lookPrendasError);
+        // Continue with other looks, or handle error more strictly
+        looksWithPrendas.push({ ...look, prendas: [] });
+        continue;
+      }
+
+      const prendaIds = lookPrendasData?.map(lp => lp.prenda_id) || [];
+      let prendasDetails: Prenda[] = [];
+
+      if (prendaIds.length > 0) {
+        const { data: prendasData, error: prendasError } = await supabase
+          .from('prendas')
+          .select('*')
+          .in('id', prendaIds);
+        
+        if (prendasError) {
+          console.error(`Error fetching prenda details for look ${look.id}:`, prendasError);
+        } else {
+          prendasDetails = prendasData?.map(mapDbPrendaToClient) || [];
+        }
+      }
+      looksWithPrendas.push({ ...look, prendas: prendasDetails });
+    }
+    return { data: looksWithPrendas };
+  } catch (error) {
+    console.error('Error fetching looks:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while fetching looks.';
+    return { error: errorMessage, data: [] };
+  }
+}
+
+export async function getLookByIdAction(lookId: number): Promise<{ data?: Look; error?: string }> {
+  if (!supabase) return { error: "Supabase client not initialized." };
+  try {
+    const { data: lookData, error: lookError } = await supabase
+      .from('looks')
+      .select('*')
+      .eq('id', lookId)
+      .single();
+
+    if (lookError) throw lookError;
+    if (!lookData) return { error: "Look not found." };
+
+    const { data: lookPrendasData, error: lookPrendasError } = await supabase
+      .from('look_prendas')
+      .select('prenda_id')
+      .eq('look_id', lookData.id);
+
+    if (lookPrendasError) throw lookPrendasError;
+
+    const prendaIds = lookPrendasData?.map(lp => lp.prenda_id) || [];
+    let prendasDetails: Prenda[] = [];
+
+    if (prendaIds.length > 0) {
+      const { data: prendasData, error: prendasError } = await supabase
+        .from('prendas')
+        .select('*')
+        .in('id', prendaIds);
+      
+      if (prendasError) throw prendasError;
+      prendasDetails = prendasData?.map(mapDbPrendaToClient) || [];
+    }
+    
+    return { data: { ...lookData, prendas: prendasDetails } };
+
+  } catch (error) {
+    console.error('Error fetching look by ID:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+    return { error: errorMessage };
+  }
+}
+
+
+export async function addLookAction(formData: LookFormData): Promise<{ data?: Look; error?: string; validationErrors?: z.ZodIssue[] }> {
+  if (!supabase) return { error: "Supabase client not initialized." };
+
+  // Basic validation for now, can be expanded with Zod for LookFormData
+  if (!formData.nombre || formData.prenda_ids.length === 0) {
+    return { error: "Nombre del look y al menos una prenda son requeridos." };
+  }
+
+  try {
+    // Insert into looks table
+    const { data: lookData, error: lookError } = await supabase
+      .from('looks')
+      .insert([{
+        nombre: formData.nombre,
+        descripcion: formData.descripcion,
+        estilo: formData.estilo,
+        imagen_url: formData.imagen_url,
+      }])
+      .select()
+      .single();
+
+    if (lookError) throw lookError;
+    if (!lookData) throw new Error("Failed to create look.");
+
+    const lookId = lookData.id;
+
+    // Insert into look_prendas junction table
+    const lookPrendasToInsert = formData.prenda_ids.map(prenda_id => ({
+      look_id: lookId,
+      prenda_id: prenda_id,
+    }));
+
+    const { error: lookPrendasError } = await supabase
+      .from('look_prendas')
+      .insert(lookPrendasToInsert);
+
+    if (lookPrendasError) throw lookPrendasError;
+
+    revalidatePath('/looks');
+    
+    // Fetch the newly created look with its prendas to return
+    const newLookResult = await getLookByIdAction(lookId);
+    if (newLookResult.error || !newLookResult.data) {
+        return { error: newLookResult.error || "Look creado, pero no se pudo obtener con detalles." };
+    }
+    return { data: newLookResult.data };
+
+  } catch (error) {
+    console.error('Error adding look:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while adding the look.';
+    return { error: errorMessage };
+  }
+}
+
+export async function updateLookAction(lookId: number, formData: LookFormData): Promise<{ data?: Look; error?: string; validationErrors?: z.ZodIssue[] }> {
+  if (!supabase) return { error: "Supabase client not initialized." };
+
+  if (!formData.nombre || formData.prenda_ids.length === 0) {
+    return { error: "Nombre del look y al menos una prenda son requeridos." };
+  }
+  
+  try {
+    // Update looks table
+    const { data: updatedLookData, error: lookError } = await supabase
+      .from('looks')
+      .update({
+        nombre: formData.nombre,
+        descripcion: formData.descripcion,
+        estilo: formData.estilo,
+        imagen_url: formData.imagen_url,
+      })
+      .eq('id', lookId)
+      .select()
+      .single();
+
+    if (lookError) throw lookError;
+    if (!updatedLookData) throw new Error("Failed to update look.");
+
+    // Update look_prendas junction table (delete old, insert new)
+    const { error: deleteError } = await supabase
+      .from('look_prendas')
+      .delete()
+      .eq('look_id', lookId);
+
+    if (deleteError) throw deleteError;
+
+    const lookPrendasToInsert = formData.prenda_ids.map(prenda_id => ({
+      look_id: lookId,
+      prenda_id: prenda_id,
+    }));
+
+    const { error: insertError } = await supabase
+      .from('look_prendas')
+      .insert(lookPrendasToInsert);
+
+    if (insertError) throw insertError;
+
+    revalidatePath('/looks');
+    revalidatePath(`/looks/${lookId}`); // If you have a detail page
+
+    const finalLookResult = await getLookByIdAction(lookId);
+    if (finalLookResult.error || !finalLookResult.data) {
+        return { error: finalLookResult.error || "Look actualizado, pero no se pudo obtener con detalles." };
+    }
+    return { data: finalLookResult.data };
+
+  } catch (error) {
+    console.error('Error updating look:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while updating the look.';
+    return { error: errorMessage };
+  }
+}
+
+export async function deleteLookAction(lookId: number): Promise<{ success?: boolean; error?: string }> {
+  if (!supabase) return { error: "Supabase client not initialized." };
+  try {
+    // Deleting from 'looks' table will cascade to 'look_prendas' due to ON DELETE CASCADE
+    const { error } = await supabase
+      .from('looks')
+      .delete()
+      .eq('id', lookId);
+
+    if (error) throw error;
+
+    revalidatePath('/looks');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting look:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred while deleting the look.';
     return { error: errorMessage };
   }
 }
