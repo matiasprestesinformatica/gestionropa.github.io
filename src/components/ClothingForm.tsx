@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form'; // Import Controller
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -35,9 +35,9 @@ const prendaFormSchema = z.object({
   nombre: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
   tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { required_error: "Por favor selecciona un tipo válido."}),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, { message: 'El modelo es requerido.' }), // Was talla
-  temporada: z.string().min(1, { message: 'Por favor selecciona una temporada.' }),
-  fechacompra: z.string().refine((val) => { // Was ocasion
+  modelo: z.string().min(1, { message: 'El modelo es requerido.' }),
+  temporada: z.enum(SEASONS, { required_error: 'Por favor selecciona una temporada.' }),
+  fechacompra: z.string().refine((val) => {
     if (val === '' || val === null || val === undefined) return true;
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
@@ -61,23 +61,23 @@ interface ClothingFormProps {
   itemId?: number | null;
 }
 
+const defaultFormValues: PrendaFormData = {
+  nombre: '',
+  tipo: TIPO_PRENDA_ENUM_VALUES[0],
+  color: PRENDA_COLORS[0],
+  modelo: '',
+  temporada: SEASONS[0],
+  fechacompra: '',
+  imagen_url: '',
+  temperatura_min: undefined,
+  temperatura_max: undefined,
+  estilo: styleOptions[0].id,
+  is_archived: false,
+};
+
 export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, itemId }: ClothingFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-
-  const defaultFormValues: PrendaFormData = {
-    nombre: '',
-    tipo: TIPO_PRENDA_ENUM_VALUES[0], // Default to the first type
-    color: PRENDA_COLORS[0], // Default to the first color
-    modelo: '',
-    temporada: SEASONS[0], // Default to the first season
-    fechacompra: '',
-    imagen_url: '',
-    temperatura_min: undefined,
-    temperatura_max: undefined,
-    estilo: styleOptions[0].id, // Default to the first style
-    is_archived: false,
-  };
 
   const form = useForm<PrendaFormData>({
     resolver: zodResolver(prendaFormSchema),
@@ -93,25 +93,32 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
         const validInitialTipo = TIPO_PRENDA_ENUM_VALUES.includes(initialData.tipo as any)
           ? initialData.tipo as typeof TIPO_PRENDA_ENUM_VALUES[number]
           : defaultFormValues.tipo;
+        const validInitialTemporada = SEASONS.includes(initialData.temporada as any)
+          ? initialData.temporada as typeof SEASONS[number]
+          : defaultFormValues.temporada;
+        const validInitialEstilo = styleOptions.some(opt => opt.id === initialData.estilo)
+          ? initialData.estilo
+          : defaultFormValues.estilo;
+
 
         form.reset({
           nombre: initialData.nombre,
           tipo: validInitialTipo,
           color: validInitialColor,
           modelo: initialData.modelo,
-          temporada: initialData.temporada,
-          fechacompra: initialData.fechacompra ? initialData.fechacompra : '', // Already YYYY-MM-DD from mapper
+          temporada: validInitialTemporada,
+          fechacompra: initialData.fechacompra ? initialData.fechacompra : '',
           imagen_url: initialData.imagen_url,
           temperatura_min: initialData.temperatura_min ?? undefined,
           temperatura_max: initialData.temperatura_max ?? undefined,
-          estilo: initialData.estilo,
+          estilo: validInitialEstilo,
           is_archived: initialData.is_archived || false,
         });
       } else {
         form.reset(defaultFormValues);
       }
     }
-  }, [initialData, form, isOpen, defaultFormValues]);
+  }, [initialData, form, isOpen]);
 
 
   const handleFormSubmit = async (data: PrendaFormData) => {
@@ -165,28 +172,40 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
               {/* Tipo */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="tipo" className="text-right">Tipo</Label>
-                <Select onValueChange={(value) => form.setValue('tipo', value as typeof TIPO_PRENDA_ENUM_VALUES[number])} defaultValue={form.getValues('tipo')}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecciona un tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIPO_PRENDA_ENUM_VALUES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="tipo"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger id="tipo" className="col-span-3">
+                        <SelectValue placeholder="Selecciona un tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIPO_PRENDA_ENUM_VALUES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.tipo && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.tipo.message}</p>}
               </div>
 
               {/* Color */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="color" className="text-right">Color</Label>
-                <Select onValueChange={(value) => form.setValue('color', value as typeof PRENDA_COLORS[number])} defaultValue={form.getValues('color')}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecciona un color" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRENDA_COLORS.map(colorName => <SelectItem key={colorName} value={colorName}>{colorName}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="color"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger id="color" className="col-span-3">
+                        <SelectValue placeholder="Selecciona un color" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRENDA_COLORS.map(colorName => <SelectItem key={colorName} value={colorName}>{colorName}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.color && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.color.message}</p>}
               </div>
 
@@ -200,14 +219,20 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
               {/* Temporada */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="temporada" className="text-right">Temporada</Label>
-                 <Select onValueChange={(value) => form.setValue('temporada', value)} defaultValue={form.getValues('temporada')}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecciona una temporada" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEASONS.map(season => <SelectItem key={season} value={season}>{season}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="temporada"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger id="temporada" className="col-span-3">
+                        <SelectValue placeholder="Selecciona una temporada" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEASONS.map(season => <SelectItem key={season} value={season}>{season}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.temporada && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.temporada.message}</p>}
               </div>
 
@@ -221,14 +246,20 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
               {/* Estilo */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="estilo" className="text-right">Estilo</Label>
-                <Select onValueChange={(value) => form.setValue('estilo', value)} defaultValue={form.getValues('estilo')}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecciona un estilo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {styleOptions.map(style => <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="estilo"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger id="estilo" className="col-span-3">
+                        <SelectValue placeholder="Selecciona un estilo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {styleOptions.map(style => <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.estilo && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.estilo.message}</p>}
               </div>
 
@@ -268,3 +299,4 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
     </Dialog>
   );
 }
+
