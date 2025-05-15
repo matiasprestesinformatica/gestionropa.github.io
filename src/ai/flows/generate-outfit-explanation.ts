@@ -53,40 +53,51 @@ const getUserClosetInformation = ai.defineTool(
       return { closetSummary: "No se pudo acceder a la información del armario debido a un problema de conexión con la base de datos." };
     }
     try {
+      // Fetch all non-archived prendas
       const { data: dbData, error: dbError } = await supabase
         .from('prendas')
         .select('*')
-        .eq('estilo', input.style.toLowerCase()) // Filter by style
-        .filter('is_archived', 'is', false); // Exclude archived items
+        .eq('is_archived', false);
 
       if (dbError) {
         console.error("Supabase error fetching prendas for tool:", dbError);
         return { closetSummary: "No se pudo obtener la información del armario en este momento debido a un error de la base de datos." };
       }
+      
+      if (!dbData) {
+        return { closetSummary: "No hay prendas activas en el armario del usuario." };
+      }
 
-      const allPrendas: Prenda[] = dbData.map(mapDbPrendaToClient);
+      const allClientPrendas: Prenda[] = dbData.map(mapDbPrendaToClient);
 
-      if (allPrendas.length === 0) {
+      // Filter by style first
+      const styleFilteredPrendas = allClientPrendas.filter(p => p.estilo.toLowerCase() === input.style.toLowerCase());
+
+      if (styleFilteredPrendas.length === 0) {
         return { closetSummary: `El armario del usuario no tiene artículos que coincidan con el estilo ${input.style} o están todos archivados.` };
       }
-
+      
+      // Parse temperature range
       const tempMatch = input.temperatureRange.match(/(-?\d+)\s*-\s*(-?\d+)/);
-      let minTemp: number | null = null;
-      let maxTemp: number | null = null;
+      let minUserTemp: number | null = null;
+      let maxUserTemp: number | null = null;
       if (tempMatch) {
-        minTemp = parseInt(tempMatch[1], 10);
-        maxTemp = parseInt(tempMatch[2], 10);
+        minUserTemp = parseInt(tempMatch[1], 10);
+        maxUserTemp = parseInt(tempMatch[2], 10);
+      } else {
+        console.warn(`Could not parse temperature range: ${input.temperatureRange}`);
+        // If temp range is not parsable, proceed without temp filtering or return a specific message
+        return { closetSummary: `No se pudo determinar el rango de temperatura para filtrar el armario de estilo ${input.style}.`};
       }
 
-      const relevantPrendas = allPrendas.filter(p => {
-        let tempCondition = true;
-        if (minTemp !== null && maxTemp !== null && typeof p.temperatura_min === 'number' && typeof p.temperatura_max === 'number') {
-          tempCondition =
-            p.temperatura_min <= maxTemp &&
-            p.temperatura_max >= minTemp;
+      const relevantPrendas = styleFilteredPrendas.filter(p => {
+        if (minUserTemp !== null && maxUserTemp !== null && typeof p.temperatura_min === 'number' && typeof p.temperatura_max === 'number') {
+          // Check for overlap: prenda_min <= user_max AND prenda_max >= user_min
+          return p.temperatura_min <= maxUserTemp && p.temperatura_max >= minUserTemp;
         }
-        return tempCondition; // Style is already filtered by DB query
+        return true; // If prenda has no temp range, or user temp range not parsed, include it (or define stricter logic)
       });
+
 
       if (relevantPrendas.length === 0) {
         return { closetSummary: `No se encontraron artículos específicos en el armario del usuario que coincidan estrechamente con el estilo ${input.style} para el rango de ${input.temperatureRange}, más allá de los artículos ya sugeridos.` };
@@ -102,7 +113,7 @@ const getUserClosetInformation = ai.defineTool(
         if (count > 1) {
           summaryParts.push(`varias ${type.toLowerCase()}s`);
         } else {
-          summaryParts.push(`algunas ${type.toLowerCase()}s`);
+          summaryParts.push(`algunas ${type.toLowerCase()}s`); // "una" or "algunas" could be more natural
         }
       }
 
@@ -120,11 +131,16 @@ const getUserClosetInformation = ai.defineTool(
 );
 
 export async function generateOutfitExplanation(input: GenerateOutfitExplanationInput): Promise<GenerateOutfitExplanationOutput> {
+  if (!ai) {
+    console.error("Genkit AI instance is not available in generateOutfitExplanation.");
+    return { explanation: "El servicio de IA no está disponible en este momento. Por favor, inténtalo más tarde." };
+  }
   return generateOutfitExplanationFlow(input);
 }
 
 const prompt = ai.definePrompt({
   name: 'generateOutfitExplanationPrompt',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: { schema: GenerateOutfitExplanationInputSchema },
   output: { schema: GenerateOutfitExplanationOutputSchema },
   tools: [getUserClosetInformation],
@@ -166,6 +182,10 @@ const generateOutfitExplanationFlow = ai.defineFlow(
     outputSchema: GenerateOutfitExplanationOutputSchema,
   },
   async (input) => {
+    if (!ai) {
+      console.error("Genkit AI instance is not available in generateOutfitExplanationFlow.");
+      return { explanation: "El servicio de IA no está disponible para el flujo en este momento." };
+    }
     const { output } = await prompt(input);
     if (!output) {
       return { explanation: "No se pudo generar una explicación en este momento. Por favor, intenta de nuevo." };
