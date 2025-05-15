@@ -14,6 +14,8 @@ import {
 import { Search, X } from 'lucide-react';
 import { CLOTHING_TYPES, SEASONS } from '@/types';
 import { styleOptions } from '@/components/StyleSelection';
+import { Card } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 export interface ClosetFilters {
   searchTerm: string;
@@ -28,13 +30,16 @@ interface ClosetFilterBarProps {
   onResetFilters: () => void;
 }
 
+const ALL_ITEMS_PLACEHOLDER_VALUE = "--all--";
+
 export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: ClosetFilterBarProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onFilterChange({ ...filters, searchTerm: e.target.value });
   };
 
   const handleSelectChange = (name: keyof Omit<ClosetFilters, 'searchTerm'>, value: string) => {
-    onFilterChange({ ...filters, [name]: value });
+    const actualValue = value === ALL_ITEMS_PLACEHOLDER_VALUE ? '' : value;
+    onFilterChange({ ...filters, [name]: actualValue });
   };
 
   return (
@@ -57,12 +62,12 @@ export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: Clo
 
         <div>
           <Label htmlFor="filter-tipo" className="text-sm font-medium text-muted-foreground">Tipo</Label>
-          <Select value={filters.tipo} onValueChange={(value) => handleSelectChange('tipo', value)}>
+          <Select value={filters.tipo || ALL_ITEMS_PLACEHOLDER_VALUE} onValueChange={(value) => handleSelectChange('tipo', value)}>
             <SelectTrigger id="filter-tipo">
               <SelectValue placeholder="Todos los tipos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos los tipos</SelectItem>
+              <SelectItem value={ALL_ITEMS_PLACEHOLDER_VALUE}>Todos los tipos</SelectItem>
               {CLOTHING_TYPES.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
@@ -74,12 +79,12 @@ export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: Clo
 
         <div>
           <Label htmlFor="filter-estilo" className="text-sm font-medium text-muted-foreground">Estilo</Label>
-          <Select value={filters.estilo} onValueChange={(value) => handleSelectChange('estilo', value)}>
+          <Select value={filters.estilo || ALL_ITEMS_PLACEHOLDER_VALUE} onValueChange={(value) => handleSelectChange('estilo', value)}>
             <SelectTrigger id="filter-estilo">
               <SelectValue placeholder="Todos los estilos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos los estilos</SelectItem>
+              <SelectItem value={ALL_ITEMS_PLACEHOLDER_VALUE}>Todos los estilos</SelectItem>
               {styleOptions.map((style) => (
                 <SelectItem key={style.id} value={style.id}>
                   {style.name}
@@ -89,15 +94,14 @@ export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: Clo
           </Select>
         </div>
         
-        {/* Temporada Filter - Replaces old Ocasion filter by name */}
         <div>
           <Label htmlFor="filter-temporada" className="text-sm font-medium text-muted-foreground">Temporada</Label>
-          <Select value={filters.temporada} onValueChange={(value) => handleSelectChange('temporada', value)}>
+          <Select value={filters.temporada || ALL_ITEMS_PLACEHOLDER_VALUE} onValueChange={(value) => handleSelectChange('temporada', value)}>
             <SelectTrigger id="filter-temporada">
               <SelectValue placeholder="Todas las temporadas" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas las temporadas</SelectItem>
+              <SelectItem value={ALL_ITEMS_PLACEHOLDER_VALUE}>Todas las temporadas</SelectItem>
               {SEASONS.map((season) => (
                 <SelectItem key={season} value={season}>
                   {season}
@@ -116,8 +120,3 @@ export function ClosetFilterBar({ filters, onFilterChange, onResetFilters }: Clo
     </Card>
   );
 }
-
-// Need to add Card and Label to imports if they are not globally available in this context
-// Assuming they are, since this is for an existing project structure
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
