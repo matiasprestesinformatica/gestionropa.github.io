@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Prenda } from '@/types'; 
-import { CLOTHING_TYPES, SEASONS } from '@/types'; // OCCASIONS removed
+import { CLOTHING_TYPES, SEASONS, PRENDA_COLORS } from '@/types';
 import { styleOptions } from '@/components/StyleSelection';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -34,10 +34,16 @@ import { Loader2 } from 'lucide-react';
 const prendaFormSchema = z.object({
   nombre: z.string().min(2, { message: 'El nombre debe tener al menos 2 caracteres.' }),
   tipo: z.string().min(1, { message: 'Por favor selecciona un tipo.' }),
-  color: z.string().min(1, { message: 'El color es requerido.' }),
-  modelo: z.string().min(1, { message: 'El modelo es requerido.' }), // Was talla
+  color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
+  modelo: z.string().min(1, { message: 'El modelo es requerido.' }),
   temporada: z.string().min(1, { message: 'Por favor selecciona una temporada.' }),
-  fechacompra: z.string().min(1, { message: 'La fecha de compra es requerida.' }), // Was ocasion
+  fechacompra: z.string().refine((val) => { // Kept refine for optional but valid date
+    if (!val) return true; // Allow empty string for optional
+    const parsedDate = parseISO(val);
+    return isValid(parsedDate);
+  }, {
+    message: "La fecha de compra debe ser válida (YYYY-MM-DD) o estar vacía.",
+  }).optional().nullable(),
   imagen_url: z.string().url({ message: 'Debe ser una URL válida.' }).or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
@@ -63,10 +69,10 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
     defaultValues: { 
       nombre: initialData?.nombre || '',
       tipo: initialData?.tipo || '',
-      color: initialData?.color || '',
-      modelo: initialData?.modelo || '', // Was talla
+      color: initialData?.color as typeof PRENDA_COLORS[number] || PRENDA_COLORS[0], // Default to first color or handle if initialData.color is not in PRENDA_COLORS
+      modelo: initialData?.modelo || '',
       temporada: initialData?.temporada || '',
-      fechacompra: initialData?.fechacompra || '', // Was ocasion
+      fechacompra: initialData?.fechacompra || '', 
       imagen_url: initialData?.imagen_url || '',
       temperatura_min: initialData?.temperatura_min ?? undefined,
       temperatura_max: initialData?.temperatura_max ?? undefined,
@@ -77,13 +83,17 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
   React.useEffect(() => {
     if (isOpen) { 
       if (initialData) {
+        // Ensure initialData.color is a valid PrendaColor for the enum
+        const validInitialColor = PRENDA_COLORS.includes(initialData.color as any) 
+          ? initialData.color as typeof PRENDA_COLORS[number]
+          : PRENDA_COLORS[0]; // Fallback to the first color if initial is not in the list
         form.reset({ 
           nombre: initialData.nombre,
           tipo: initialData.tipo,
-          color: initialData.color,
-          modelo: initialData.modelo, // Was talla
+          color: validInitialColor,
+          modelo: initialData.modelo,
           temporada: initialData.temporada,
-          fechacompra: initialData.fechacompra, // Was ocasion
+          fechacompra: initialData.fechacompra, 
           imagen_url: initialData.imagen_url,
           temperatura_min: initialData.temperatura_min ?? undefined,
           temperatura_max: initialData.temperatura_max ?? undefined,
@@ -91,7 +101,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
         });
       } else {
         form.reset({ 
-          nombre: '', tipo: '', color: '', modelo: '', temporada: '', fechacompra: '',
+          nombre: '', tipo: '', color: PRENDA_COLORS[0], modelo: '', temporada: '', fechacompra: '',
           imagen_url: '', temperatura_min: undefined, temperatura_max: undefined, estilo: ''
         });
       }
@@ -101,7 +111,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
 
   const handleFormSubmit = async (data: PrendaFormData) => {
     setIsSubmitting(true);
-    const result = await onSubmit(data, itemId !== null ? itemId : undefined); 
+    const result = await onSubmit(data, itemId !== null && itemId !== undefined ? itemId : undefined); 
     setIsSubmitting(false);
 
     if (result.error) {
@@ -164,11 +174,18 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
               {/* Color */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="color" className="text-right">Color</Label>
-                <Input id="color" {...form.register('color')} className="col-span-3" />
+                <Select onValueChange={(value) => form.setValue('color', value as typeof PRENDA_COLORS[number])} defaultValue={form.getValues('color')}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Selecciona un color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRENDA_COLORS.map(colorName => <SelectItem key={colorName} value={colorName}>{colorName}</SelectItem>)}
+                  </SelectContent>
+                </Select>
                 {form.formState.errors.color && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.color.message}</p>}
               </div>
 
-              {/* Modelo (was Talla) */}
+              {/* Modelo */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="modelo" className="text-right">Modelo</Label>
                 <Input id="modelo" {...form.register('modelo')} className="col-span-3" />
@@ -189,7 +206,7 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
                 {form.formState.errors.temporada && <p className="col-span-4 text-sm text-destructive">{form.formState.errors.temporada.message}</p>}
               </div>
 
-              {/* Fecha Compra (was Ocasion) */}
+              {/* Fecha Compra */}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="fechacompra" className="text-right">Fecha Compra</Label>
                 <Input id="fechacompra" type="date" {...form.register('fechacompra')} className="col-span-3" />
@@ -246,4 +263,3 @@ export function ClothingForm({ isOpen, onOpenChange, onSubmit, initialData, item
     </Dialog>
   );
 }
-

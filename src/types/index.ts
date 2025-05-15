@@ -1,6 +1,15 @@
 
 import type { LucideIcon } from 'lucide-react';
 
+export const PRENDA_COLORS = [
+  'Rojo', 'Azul', 'Verde', 'Amarillo', 'Negro', 'Blanco', 'Gris', 'Marrón', 
+  'Naranja', 'Violeta', 'Rosa', 'Beige', 'Celeste', 'Dorado', 'Plateado', 
+  'Multicolor', 'Estampado', 'Otro'
+] as const;
+
+export type PrendaColor = typeof PRENDA_COLORS[number];
+
+
 export interface StyleOption {
   id: string;
   name: string;
@@ -14,7 +23,7 @@ export interface OutfitItem {
   imageUrl: string;
   category: string; 
   aiHint: string; 
-  color?: string;
+  color?: PrendaColor | string; // Can be from the list or a general string if coming from other sources
 }
 
 export interface SuggestedOutfit {
@@ -29,7 +38,7 @@ export interface Prenda {
   created_at: string; 
   nombre: string;
   tipo: string;
-  color: string;
+  color: PrendaColor | string; // Use the defined type or allow string for flexibility if needed elsewhere
   modelo: string; 
   temporada: string;
   fechacompra: string; // YYYY-MM-DD format

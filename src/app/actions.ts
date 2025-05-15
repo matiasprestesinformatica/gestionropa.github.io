@@ -2,7 +2,8 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData } from '@/types';
+import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, PrendaColor } from '@/types';
+import { PRENDA_COLORS } from '@/types'; // Import PRENDA_COLORS
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -106,7 +107,7 @@ export async function getAISuggestionAction(
 const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.string().min(1, "El tipo es requerido."),
-  color: z.string().min(1, "El color es requerido."),
+  color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
   modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.string().min(1, "La temporada es requerida."),
   fechacompra: z.string().refine((val) => {
@@ -148,7 +149,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     color,
     modelo,
     temporada,
-    fechacompra: fechacompra || null,
+    fechacompra: fechacompra || null, // Database column is `fechacompra` (formerly ocasion)
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -166,8 +167,7 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/dashboard'); // Now home page
-    revalidatePath('/'); // Also home page
+    revalidatePath('/'); // Now home page
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -223,9 +223,9 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     nombre,
     tipo,
     color,
-    modelo,
+    modelo, // This will be saved to 'modelo' column (formerly 'talla')
     temporada,
-    fechacompra: fechacompra || null,
+    fechacompra: fechacompra || null, // This will be saved to 'fechacompra' column (formerly 'ocasion')
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -244,8 +244,7 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/dashboard'); // Now home page
-    revalidatePath('/'); // Also home page
+    revalidatePath('/'); 
     revalidatePath('/archivo');
     revalidatePath('/statistics');
     return { data: mapDbPrendaToClient(dbData) };
@@ -271,7 +270,6 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
     if (error) throw error;
 
     revalidatePath('/closet');
-    revalidatePath('/dashboard');
     revalidatePath('/');
     revalidatePath('/archivo');
     revalidatePath('/looks');
@@ -527,7 +525,7 @@ export async function getCalendarAssignmentsAction(
       if (assignment.tipo_asignacion === 'prenda' && assignment.prendas) {
         return {
           ...assignment,
-          fecha: assignment.fecha,
+          fecha: assignment.fecha, // Fecha ya está como YYYY-MM-DD desde la DB
           prenda: mapDbPrendaToClient(assignment.prendas),
           look: null,
           look_id: null,
@@ -535,7 +533,7 @@ export async function getCalendarAssignmentsAction(
       } else if (assignment.tipo_asignacion === 'look' && assignment.looks) {
         return {
           ...assignment,
-          fecha: assignment.fecha,
+          fecha: assignment.fecha, // Fecha ya está como YYYY-MM-DD
           look: {
             ...assignment.looks,
             prendas: assignment.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)),
@@ -544,7 +542,6 @@ export async function getCalendarAssignmentsAction(
           prenda_id: null,
         } as LookCalendarAssignment;
       }
-      // Fallback for potentially incomplete data, though chk_assignment_reference should prevent this
       console.warn("Found assignment without valid prenda or look reference:", assignment.id)
       return { ...assignment, fecha: assignment.fecha, prenda: null, look: null };
     });
@@ -851,7 +848,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
     if (error) throw error;
 
     data.forEach(assignment => {
-      const assignmentDate = parseISO(assignment.fecha);
+      const assignmentDate = parseISO(assignment.fecha); // No need to add 'T00:00:00' as DB stores DATE
       const monthKey = format(assignmentDate, 'MMM yy', { locale: es });
       if (activityData.hasOwnProperty(monthKey)) {
         activityData[monthKey]++;
