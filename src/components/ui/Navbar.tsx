@@ -10,7 +10,7 @@ import {
   Sheet,
   SheetContent,
   SheetHeader,
-  SheetTitle, // Ensure SheetTitle is imported
+  SheetTitle,
   SheetTrigger,
   SheetClose,
 } from '@/components/ui/sheet';
@@ -26,15 +26,15 @@ import {
   Shirt,
   BarChart3,
   Settings,
-  Sparkles, // Used for "Mis Looks"
+  Sparkles,
   LayoutDashboard,
   CalendarDays,
   Archive,
-  ShoppingBag, // Used for "Lista Deseos"
+  ShoppingBag,
   ChevronDown,
   Wand2, 
   SlidersHorizontal,
-  Home, // Used for "Sugerencias AI"
+  Home,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,7 +44,6 @@ interface NavLinkItem {
   icon: React.ElementType;
 }
 
-// Navigation structure
 const mainDesktopLinks: NavLinkItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/closet', label: 'Armario', icon: Shirt },
@@ -63,7 +62,6 @@ const moreSettingsDropdownItems: NavLinkItem[] = [
   { href: '/deseos', label: 'Lista Deseos', icon: ShoppingBag },
 ];
 
-// Flattened list for mobile navigation
 const allMobileNavLinks: NavLinkItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home },
@@ -82,7 +80,6 @@ export function Navbar() {
 
   const isLinkActive = (href: string) => {
     if (href === '/' && pathname === '/') return true;
-    // For other paths, ensure it's not just a partial match for the root '/'
     return href !== '/' && pathname.startsWith(href);
   };
 
@@ -94,14 +91,12 @@ export function Navbar() {
     <nav className="bg-card border-b border-border/70 shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" aria-label="EstilosIA Home" className="flex items-center">
               <Logo className="h-8 w-auto" />
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex md:ml-6 md:space-x-1 lg:space-x-2 items-center">
             {mainDesktopLinks.map((link) => (
               <Button
@@ -120,7 +115,6 @@ export function Navbar() {
               </Button>
             ))}
 
-            {/* Sugerencias Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -138,7 +132,7 @@ export function Navbar() {
               <DropdownMenuContent>
                 {suggestionsDropdownItems.map((item) => (
                   <DropdownMenuItem key={item.label} asChild>
-                    <Link href={item.href} className={cn(isLinkActive(item.href) && "bg-accent/50")}>
+                    <Link href={item.href} passHref className={cn(isLinkActive(item.href) && "bg-accent/50")}>
                       <item.icon className="mr-2 h-4 w-4 opacity-80" />
                       {item.label}
                     </Link>
@@ -147,7 +141,6 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Más Ajustes Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -165,7 +158,7 @@ export function Navbar() {
               <DropdownMenuContent>
                 {moreSettingsDropdownItems.map((item) => (
                   <DropdownMenuItem key={item.label} asChild>
-                    <Link href={item.href} className={cn(isLinkActive(item.href) && "bg-accent/50")}>
+                    <Link href={item.href} passHref className={cn(isLinkActive(item.href) && "bg-accent/50")}>
                       <item.icon className="mr-2 h-4 w-4 opacity-80" />
                       {item.label}
                     </Link>
@@ -175,9 +168,7 @@ export function Navbar() {
             </DropdownMenu>
           </div>
 
-          {/* Right side: Mobile Menu Trigger */}
           <div className="flex items-center gap-2">
-            {/* Mobile Menu Trigger */}
             <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -203,6 +194,7 @@ export function Navbar() {
                       <SheetClose asChild key={link.label}>
                         <Link
                           href={link.href}
+                          passHref
                           className={cn(
                             'flex items-center px-3 py-3 rounded-md text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors group',
                             isLinkActive(link.href) && "bg-accent text-accent-foreground"
