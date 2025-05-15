@@ -11,11 +11,10 @@ import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
-import type { SuggestedOutfit, DashboardStats, ColorFrequency, Prenda } from '@/types';
-import { getAISuggestionAction, getPrendasAction } from '@/app/actions'; // Assuming actions for stats & prendas
+import type { SuggestedOutfit, DashboardStats, ColorFrequency } from '@/types';
+import { getAISuggestionAction, getPrendasAction } from '../actions'; // Adjusted import path
 import { useToast } from '@/hooks/use-toast';
 
-// Mock data - replace with actual data fetching
 const mockDashboardStats: DashboardStats = {
   totalPrendas: 0,
   totalLooks: 0,
@@ -29,7 +28,9 @@ const mockColorFrequency: ColorFrequency[] = [
   { color: 'Verde', count: 0, fill: 'hsl(var(--chart-5))' },
 ];
 
-export default function DashboardPage() {
+// This component now represents the content for the /dashboard route.
+// The actual homepage (/) will have the same content.
+export default function DashboardPage() { 
   const [stats, setStats] = React.useState<DashboardStats>(mockDashboardStats);
   const [colorFrequency, setColorFrequency] = React.useState<ColorFrequency[]>(mockColorFrequency);
   const [randomSuggestion, setRandomSuggestion] = React.useState<SuggestedOutfit | null>(null);
@@ -47,12 +48,9 @@ export default function DashboardPage() {
       }
       const prendas = prendasResult.data;
 
-      // Calculate stats
       const totalPrendas = prendas.length;
-      // Placeholder for totalLooks, needs a separate action
-      setStats({ totalPrendas, totalLooks: 0 /* Replace with actual data */ });
+      setStats({ totalPrendas, totalLooks: 0 });
 
-      // Calculate color frequency
       const colorCounts: Record<string, number> = {};
       prendas.forEach(p => {
         if (p.color) {
@@ -67,13 +65,11 @@ export default function DashboardPage() {
         .map(([color, count], index) => ({ color, count, fill: chartColors[index % chartColors.length] }));
       setColorFrequency(sortedColors.length > 0 ? sortedColors : mockColorFrequency);
 
-      // Fetch a random outfit suggestion if there are prendas
       if (prendas.length > 0) {
-        // Pick a random style and temperature for variety
         const styles = ['casual', 'formal', 'sporty', 'bohemian'];
         const randomStyle = styles[Math.floor(Math.random() * styles.length)];
-        const randomTempMin = Math.floor(Math.random() * 20) + 5; // 5 to 24
-        const randomTempMax = randomTempMin + Math.floor(Math.random() * 10) + 5; // min+5 to min+14
+        const randomTempMin = Math.floor(Math.random() * 20) + 5;
+        const randomTempMax = randomTempMin + Math.floor(Math.random() * 10) + 5;
 
         const suggestionResult = await getAISuggestionAction({
           temperature: [randomTempMin, randomTempMax],
@@ -82,7 +78,7 @@ export default function DashboardPage() {
         });
         if ('error' in suggestionResult) {
           console.warn("Error fetching random suggestion for dashboard:", suggestionResult.error);
-          setRandomSuggestion(null); // Set to null or a default message
+          setRandomSuggestion(null);
         } else {
           setRandomSuggestion(suggestionResult);
         }
@@ -101,7 +97,6 @@ export default function DashboardPage() {
   React.useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
-
 
   if (isLoading) {
     return (
@@ -134,24 +129,19 @@ export default function DashboardPage() {
     );
   }
 
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-
-        {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard title="Total de Prendas" value={stats.totalPrendas.toString()} icon={Shirt} description="Prendas en tu armario" />
           <StatsCard title="Looks Guardados" value={stats.totalLooks.toString()} icon={Sparkles} description="Combinaciones creadas" />
-          {/* Add more StatsCard as needed */}
           <StatsCard title="Tipos de Prenda" value="N/A" icon={FileText} description="Categorías distintas" />
           <StatsCard title="Colores Predominantes" value="N/A" icon={Palette} description="Diversidad de colores" />
         </div>
         
         <div className="grid gap-8 md:grid-cols-2">
-          {/* Color Distribution Chart */}
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle>Distribución de Colores</CardTitle>
@@ -166,7 +156,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Random Outfit Suggestion */}
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle>Sugerencia Rápida</CardTitle>

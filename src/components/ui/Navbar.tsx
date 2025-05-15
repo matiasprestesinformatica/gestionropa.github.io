@@ -28,7 +28,6 @@ import {
   Settings,
   Home,
   Sparkles,
-  PlusCircle,
   LayoutDashboard,
   CalendarDays,
   Archive,
@@ -47,14 +46,14 @@ interface NavLinkItem {
 
 // Navigation structure
 const mainDesktopLinks: NavLinkItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard }, // Changed from /dashboard
   { href: '/closet', label: 'Armario', icon: Shirt },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
   { href: '/statistics', label: 'Estadísticas', icon: BarChart3 },
 ];
 
 const suggestionsDropdownItems: NavLinkItem[] = [
-  { href: '/', label: 'Sugerencias AI', icon: Home },
+  { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home }, // Changed from /
   { href: '/looks', label: 'Mis Looks', icon: Sparkles },
 ];
 
@@ -66,8 +65,8 @@ const moreSettingsDropdownItems: NavLinkItem[] = [
 
 // Flattened list for mobile navigation
 const allMobileNavLinks: NavLinkItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/', label: 'Sugerencias AI', icon: Home },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard }, // Changed from /dashboard
+  { href: '/sugerenciaia', label: 'Sugerencias AI', icon: Home }, // Changed from /
   { href: '/closet', label: 'Armario', icon: Shirt },
   { href: '/looks', label: 'Mis Looks', icon: Sparkles },
   { href: '/calendario', label: 'Calendario', icon: CalendarDays },
@@ -82,10 +81,9 @@ export function Navbar() {
   const pathname = usePathname();
 
   const isLinkActive = (href: string) => {
-    if (href === '/dashboard' && pathname === '/dashboard') return true;
     if (href === '/' && pathname === '/') return true;
     // For other paths, ensure it's not just a partial match for the root '/'
-    return href !== '/' && href !== '/dashboard' && pathname.startsWith(href);
+    return href !== '/' && pathname.startsWith(href);
   };
 
   const isDropdownActive = (itemHrefs: string[]) => {
@@ -98,7 +96,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <Link href="/dashboard" aria-label="EstilosIA Home" className="flex items-center">
+            <Link href="/" aria-label="EstilosIA Home" className="flex items-center"> {/* Logo now links to / (new dashboard) */}
               <Logo className="h-8 w-auto" />
             </Link>
           </div>
@@ -189,7 +187,7 @@ export function Navbar() {
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 sm:w-80 bg-card p-0 flex flex-col">
                   <SheetHeader className="p-4 border-b border-border flex-row justify-between items-center">
-                     <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+                     <Link href="/" onClick={() => setIsMobileMenuOpen(false)}> {/* Logo in mobile menu also links to / */}
                         <Logo className="h-7 w-auto" />
                      </Link>
                     <SheetClose asChild>

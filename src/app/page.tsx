@@ -1,226 +1,174 @@
 
+// src/app/page.tsx (New Homepage - formerly Dashboard)
 'use client';
 
 import * as React from 'react';
 import { Navbar } from '@/components/ui/Navbar';
-import { TemperatureControl } from '@/components/TemperatureControl';
-import { StyleSelection } from '@/components/StyleSelection';
+import { Footer } from '@/components/ui/Footer';
+import { StatsCard } from '@/components/dashboard/StatsCard';
+import { ColorDistributionChart } from '@/components/dashboard/ColorDistributionChart';
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // Import Textarea
-import { Loader2, AlertTriangle, ClipboardCopy, MessageSquareText, Lightbulb, History as HistoryIcon } from 'lucide-react';
-import { getAISuggestionAction } from './actions';
-import type { SuggestedOutfit, HistoricalSuggestion } from '@/types'; // Updated types
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
+import type { SuggestedOutfit, DashboardStats, ColorFrequency } from '@/types';
+import { getAISuggestionAction, getPrendasAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
-import { Footer } from '@/components/ui/Footer';
-import { OutfitExplanation } from '@/components/OutfitExplanation'; // New component
-import { SuggestionHistory } from '@/components/SuggestionHistory'; // New component
-import { InspirationCard } from '@/components/InspirationCard';   // New component
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // For Notes
 
-const LOCAL_STORAGE_HISTORY_KEY = 'estilosia_suggestion_history';
-const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_homepage';
+const mockDashboardStats: DashboardStats = {
+  totalPrendas: 0,
+  totalLooks: 0,
+};
 
-export default function HomePage() {
-  const [temperature, setTemperature] = React.useState<[number, number]>([18, 22]);
-  const [selectedStyle, setSelectedStyle] = React.useState<string | null>('casual');
-  const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(true);
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const [suggestion, setSuggestion] = React.useState<SuggestedOutfit | null>(null);
+const mockColorFrequency: ColorFrequency[] = [
+  { color: 'Azul', count: 0, fill: 'hsl(var(--chart-1))' },
+  { color: 'Negro', count: 0, fill: 'hsl(var(--chart-2))' },
+  { color: 'Blanco', count: 0, fill: 'hsl(var(--chart-3))' },
+  { color: 'Gris', count: 0, fill: 'hsl(var(--chart-4))' },
+  { color: 'Verde', count: 0, fill: 'hsl(var(--chart-5))' },
+];
+
+export default function HomePage() { // Renamed from DashboardPage
+  const [stats, setStats] = React.useState<DashboardStats>(mockDashboardStats);
+  const [colorFrequency, setColorFrequency] = React.useState<ColorFrequency[]>(mockColorFrequency);
+  const [randomSuggestion, setRandomSuggestion] = React.useState<SuggestedOutfit | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  
-  const [suggestionHistory, setSuggestionHistory] = React.useState<HistoricalSuggestion[]>([]);
-  const [userNotes, setUserNotes] = React.useState<string>('');
-
   const { toast } = useToast();
 
-  // Load history and notes from localStorage on mount
-  React.useEffect(() => {
-    const storedHistory = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY);
-    if (storedHistory) {
-      try {
-        setSuggestionHistory(JSON.parse(storedHistory));
-      } catch (e) {
-        console.error("Failed to parse suggestion history from localStorage", e);
-        localStorage.removeItem(LOCAL_STORAGE_HISTORY_KEY); // Clear corrupted data
-      }
-    }
-    const storedNotes = localStorage.getItem(LOCAL_STORAGE_NOTES_KEY);
-    if (storedNotes) {
-      setUserNotes(storedNotes);
-    }
-  }, []);
-
-  const saveHistory = (history: HistoricalSuggestion[]) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(history));
-    } catch (e) {
-      console.error("Failed to save suggestion history to localStorage", e);
-      toast({
-        title: "Error de almacenamiento",
-        description: "No se pudo guardar el historial. Puede que el almacenamiento local esté lleno.",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const saveNotes = (notes: string) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_NOTES_KEY, notes);
-    } catch (e)
-    {
-      console.error("Failed to save notes to localStorage", e);
-    }
-  };
-
-
-  const handleGetSuggestion = async () => {
-    if (!selectedStyle) {
-      toast({
-        title: 'Error de Selección',
-        description: 'Por favor, selecciona un estilo antes de continuar.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const fetchDashboardData = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    // Keep current suggestion while loading new one for smoother UX if desired, or set to null
-    // setSuggestion(null); 
+    try {
+      const prendasResult = await getPrendasAction();
+      if (prendasResult.error || !prendasResult.data) {
+        throw new Error(prendasResult.error || 'No se pudieron cargar las prendas.');
+      }
+      const prendas = prendasResult.data;
 
-    const result = await getAISuggestionAction({
-      temperature,
-      styleId: selectedStyle,
-      useClosetInfo,
-    });
+      const totalPrendas = prendas.length;
+      setStats({ totalPrendas, totalLooks: 0 });
 
-    if ('error' in result) {
-      setError(result.error);
-      setSuggestion(null); // Clear suggestion on error
-      toast({
-        title: 'Error al generar sugerencia',
-        description: result.error,
-        variant: 'destructive',
+      const colorCounts: Record<string, number> = {};
+      prendas.forEach(p => {
+        if (p.color) {
+          colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
+        }
       });
-    } else {
-      setSuggestion(result);
-      // Add to history
-      const newHistoryItem: HistoricalSuggestion = {
-        id: Date.now().toString(), // Simple unique ID
-        timestamp: Date.now(),
-        temperature,
-        selectedStyle,
-        useClosetInfo,
-        suggestion: result,
-      };
-      const updatedHistory = [newHistoryItem, ...suggestionHistory].slice(0, 10); // Keep last 10
-      setSuggestionHistory(updatedHistory);
-      saveHistory(updatedHistory);
+      
+      const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+      const sortedColors = Object.entries(colorCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([color, count], index) => ({ color, count, fill: chartColors[index % chartColors.length] }));
+      setColorFrequency(sortedColors.length > 0 ? sortedColors : mockColorFrequency);
+
+      if (prendas.length > 0) {
+        const styles = ['casual', 'formal', 'sporty', 'bohemian'];
+        const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+        const randomTempMin = Math.floor(Math.random() * 20) + 5;
+        const randomTempMax = randomTempMin + Math.floor(Math.random() * 10) + 5;
+
+        const suggestionResult = await getAISuggestionAction({
+          temperature: [randomTempMin, randomTempMax],
+          styleId: randomStyle,
+          useClosetInfo: true,
+        });
+        if ('error' in suggestionResult) {
+          console.warn("Error fetching random suggestion for dashboard:", suggestionResult.error);
+          setRandomSuggestion(null);
+        } else {
+          setRandomSuggestion(suggestionResult);
+        }
+      } else {
+        setRandomSuggestion(null);
+      }
+
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Error desconocido';
+      setError(errorMessage);
+      toast({ title: 'Error al cargar el dashboard', description: errorMessage, variant: 'destructive' });
     }
     setIsLoading(false);
-  };
+  }, [toast]);
 
-  const handleApplyHistoryItem = (historicalItem: HistoricalSuggestion) => {
-    setTemperature(historicalItem.temperature);
-    setSelectedStyle(historicalItem.selectedStyle);
-    setUseClosetInfo(historicalItem.useClosetInfo);
-    setSuggestion(historicalItem.suggestion);
-    setError(null); // Clear any previous errors
-    toast({ title: 'Sugerencia Aplicada', description: 'Se cargaron los parámetros y la sugerencia del historial.' });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  React.useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-  const handleClearHistory = () => {
-    setSuggestionHistory([]);
-    localStorage.removeItem(LOCAL_STORAGE_HISTORY_KEY);
-    toast({ title: 'Historial Limpiado', description: 'Se han eliminado todas las sugerencias guardadas.' });
-  };
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background">
+        <Navbar />
+        <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
-  const handleUserNotesChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newNotes = event.target.value;
-    setUserNotes(newNotes);
-    saveNotes(newNotes);
-  };
+  if (error && !isLoading) {
+     return (
+      <div className="flex flex-col min-h-screen bg-background">
+        <Navbar />
+        <main className="flex-grow container mx-auto px-4 py-8">
+           <div className="my-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg flex items-center gap-3">
+            <AlertTriangle className="h-6 w-6" />
+            <div>
+              <h3 className="font-semibold">Error al cargar el dashboard</h3>
+              <p className="text-sm">{error}</p>
+              <Button variant="link" onClick={fetchDashboardData} className="p-0 h-auto text-destructive mt-1">Intentar de nuevo</Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Columna Izquierda (Controles y Sugerencia) */}
-          <div className="lg:col-span-2 space-y-8">
-            <TemperatureControl value={temperature} onChange={setTemperature} />
-            <StyleSelection selectedStyle={selectedStyle} onStyleSelect={setSelectedStyle} />
-
-            <div className="flex items-center space-x-2 p-4 bg-card rounded-xl shadow-lg">
-              <Checkbox
-                id="useClosetInfo"
-                checked={useClosetInfo}
-                onCheckedChange={(checked) => setUseClosetInfo(Boolean(checked))}
-                aria-label="Usar información del armario"
-              />
-              <Label htmlFor="useClosetInfo" className="text-sm font-medium text-foreground cursor-pointer">
-                Personalizar con información de mi armario
-              </Label>
-            </div>
-            
-            <Button
-              onClick={handleGetSuggestion}
-              disabled={isLoading || !selectedStyle}
-              className="w-full py-3 text-lg font-semibold rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
-              size="lg"
-            >
-              {isLoading ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+      <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <StatsCard title="Total de Prendas" value={stats.totalPrendas.toString()} icon={Shirt} description="Prendas en tu armario" />
+          <StatsCard title="Looks Guardados" value={stats.totalLooks.toString()} icon={Sparkles} description="Combinaciones creadas" />
+          <StatsCard title="Tipos de Prenda" value="N/A" icon={FileText} description="Categorías distintas" />
+          <StatsCard title="Colores Predominantes" value="N/A" icon={Palette} description="Diversidad de colores" />
+        </div>
+        
+        <div className="grid gap-8 md:grid-cols-2">
+          <Card className="shadow-lg rounded-xl">
+            <CardHeader>
+              <CardTitle>Distribución de Colores</CardTitle>
+              <CardDescription>Colores más frecuentes en tu armario.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {colorFrequency.length > 0 && colorFrequency.some(c => c.count > 0) ? (
+                <ColorDistributionChart data={colorFrequency} />
               ) : (
-                'Obtener Sugerencia de Atuendo'
+                <p className="text-muted-foreground text-center py-8">No hay suficientes datos de colores para mostrar el gráfico.</p>
               )}
-            </Button>
+            </CardContent>
+          </Card>
 
-            {error && (
-              <div className="mt-6 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-lg flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                <p className="text-sm font-medium">{error}</p>
-              </div>
-            )}
-
-            {suggestion && <OutfitSuggestion suggestion={suggestion} />}
-            {suggestion && <OutfitExplanation explanation={suggestion.explanation} />}
-
-            {/* User Notes Section */}
-            {suggestion && (
-                <Card className="shadow-lg rounded-xl mt-6">
-                    <CardHeader>
-                        <CardTitle className="flex items-center text-lg font-semibold">
-                            <MessageSquareText className="mr-2 h-5 w-5 text-primary" />
-                            Mis Notas sobre este Look
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                            Añade cualquier apunte o recordatorio sobre esta sugerencia.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Textarea
-                            placeholder="Ej: Perfecto para la cena del viernes, probar con otros zapatos..."
-                            value={userNotes}
-                            onChange={handleUserNotesChange}
-                            rows={4}
-                            className="resize-none"
-                        />
-                    </CardContent>
-                </Card>
-            )}
-          </div>
-
-          {/* Columna Derecha (Historial e Inspiración) */}
-          <div className="lg:col-span-1 space-y-8 lg:pt-0">
-            <SuggestionHistory history={suggestionHistory} onApplySuggestion={handleApplyHistoryItem} onClearHistory={handleClearHistory} />
-            <InspirationCard />
-          </div>
+          <Card className="shadow-lg rounded-xl">
+            <CardHeader>
+              <CardTitle>Sugerencia Rápida</CardTitle>
+              <CardDescription>Un look aleatorio para inspirarte.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {randomSuggestion ? (
+                <OutfitSuggestion suggestion={randomSuggestion} />
+              ) : (
+                 stats.totalPrendas > 0 ? 
+                 <p className="text-muted-foreground text-center py-8">No se pudo generar una sugerencia aleatoria en este momento.</p>
+                 : <p className="text-muted-foreground text-center py-8">Agrega prendas a tu armario para recibir sugerencias.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
       <Footer />
