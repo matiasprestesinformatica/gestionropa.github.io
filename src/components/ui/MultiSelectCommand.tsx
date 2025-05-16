@@ -68,17 +68,25 @@ export function MultiSelectCommand({
                   className="rounded-sm px-2 py-0.5 text-xs"
                 >
                   {option.label}
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={0}
                     aria-label={`Eliminar ${option.label}`}
                     onMouseDown={(e) => e.preventDefault()} // Prevent popover close on click
                     onClick={(e) => {
                       e.stopPropagation(); // Prevent popover toggle
                       handleRemove(option.value);
                     }}
-                    className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        handleRemove(option.value);
+                      }
+                    }}
+                    className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
                   >
                     <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                  </button>
+                  </span>
                 </Badge>
               ))
             : <span className="text-muted-foreground text-sm">{placeholder}</span>}
