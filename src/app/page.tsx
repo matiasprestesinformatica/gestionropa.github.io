@@ -14,6 +14,7 @@ import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle } from 'luci
 import type { SuggestedOutfit, DashboardStats, ColorFrequency } from '@/types';
 import { getAISuggestionAction, getPrendasAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
+import { NuevoPrompts } from '@/components/dashboard/nuevoprompts'; // Import the new component
 
 const mockDashboardStats: DashboardStats = {
   totalPrendas: 0,
@@ -47,7 +48,8 @@ export default function HomePage() { // Renamed from DashboardPage
       const prendas = prendasResult.data;
 
       const totalPrendas = prendas.length;
-      setStats({ totalPrendas, totalLooks: 0 });
+      // TODO: Fetch totalLooks count from the database
+      setStats({ totalPrendas, totalLooks: 0 }); // Mocking totalLooks for now
 
       const colorCounts: Record<string, number> = {};
       prendas.forEach(p => {
@@ -139,7 +141,7 @@ export default function HomePage() { // Renamed from DashboardPage
           <StatsCard title="Colores Predominantes" value="N/A" icon={Palette} description="Diversidad de colores" />
         </div>
         
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2"> {/* Adjusted grid for two main cards */}
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle>Distribución de Colores</CardTitle>
@@ -170,6 +172,12 @@ export default function HomePage() { // Renamed from DashboardPage
             </CardContent>
           </Card>
         </div>
+        
+        {/* Add the new prompt component here */}
+        <div className="grid grid-cols-1">
+           <NuevoPrompts />
+        </div>
+
       </main>
       <Footer />
     </div>
