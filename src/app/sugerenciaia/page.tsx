@@ -5,25 +5,28 @@ import * as React from 'react';
 import { Navbar } from '@/components/ui/Navbar';
 import { TemperatureControl } from '@/components/TemperatureControl';
 import { StyleSelection } from '@/components/StyleSelection';
-import { OutfitSuggestion } from '@/components/OutfitSuggestion';
+// OutfitSuggestion is now used within InteractiveOutfitSuggestion
+// import { OutfitSuggestion } from '@/components/OutfitSuggestion'; 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, AlertTriangle, MessageSquareText } from 'lucide-react';
-import { getAISuggestionAction } from '../actions'; // Adjusted import path
-import type { SuggestedOutfit, HistoricalSuggestion } from '@/types';
+import { getAISuggestionAction, getPrendasAction } from '../actions';
+import type { SuggestedOutfit, HistoricalSuggestion, Prenda } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Footer } from '@/components/ui/Footer';
 import { OutfitExplanation } from '@/components/OutfitExplanation';
 import { SuggestionHistory } from '@/components/SuggestionHistory';
 import { InspirationCard } from '@/components/InspirationCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { InteractiveOutfitSuggestion } from '@/components/dashboard/InteractiveOutfitSuggestion';
+
 
 const LOCAL_STORAGE_HISTORY_KEY = 'estilosia_suggestion_history';
-const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_suggester'; // Unique key for this page's notes
+const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_suggester';
 
-export default function SugerenciaAIPage() { // Renamed from HomePage
+export default function SugerenciaAIPage() {
   const [temperature, setTemperature] = React.useState<[number, number]>([18, 22]);
   const [selectedStyle, setSelectedStyle] = React.useState<string | null>('casual');
   const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(true);
@@ -33,6 +36,7 @@ export default function SugerenciaAIPage() { // Renamed from HomePage
   
   const [suggestionHistory, setSuggestionHistory] = React.useState<HistoricalSuggestion[]>([]);
   const [userNotes, setUserNotes] = React.useState<string>('');
+  const [availablePrendasForLookForm, setAvailablePrendasForLookForm] = React.useState<Prenda[]>([]);
 
   const { toast } = useToast();
 
@@ -50,7 +54,19 @@ export default function SugerenciaAIPage() { // Renamed from HomePage
     if (storedNotes) {
       setUserNotes(storedNotes);
     }
-  }, []);
+    
+    // Fetch all available prendas once for the LookForm
+    const fetchAllPrendas = async () => {
+        const prendasResult = await getPrendasAction();
+        if (prendasResult.data) {
+            setAvailablePrendasForLookForm(prendasResult.data.filter(p => !p.is_archived));
+        } else if (prendasResult.error) {
+            toast({ title: "Error al cargar prendas", description: "No se pudieron cargar las prendas para crear looks.", variant: "destructive"});
+        }
+    };
+    fetchAllPrendas();
+
+  }, [toast]);
 
   const saveHistory = (history: HistoricalSuggestion[]) => {
     try {
@@ -86,6 +102,7 @@ export default function SugerenciaAIPage() { // Renamed from HomePage
 
     setIsLoading(true);
     setError(null);
+    setSuggestion(null); // Clear previous suggestion
     
     const result = await getAISuggestionAction({
       temperature,
@@ -181,8 +198,16 @@ export default function SugerenciaAIPage() { // Renamed from HomePage
               </div>
             )}
 
-            {suggestion && <OutfitSuggestion suggestion={suggestion} />}
-            {suggestion && <OutfitExplanation explanation={suggestion.explanation} />}
+            {suggestion && (
+              <InteractiveOutfitSuggestion 
+                initialSuggestion={suggestion}
+                originalTemperature={temperature}
+                originalStyleId={selectedStyle || 'casual'} // Default to 'casual' if somehow null
+                availablePrendasForLookForm={availablePrendasForLookForm}
+              />
+            )}
+            
+            {suggestion?.explanation && <OutfitExplanation explanation={suggestion.explanation} />}
 
             {suggestion && (
                 <Card className="shadow-lg rounded-xl mt-6">
