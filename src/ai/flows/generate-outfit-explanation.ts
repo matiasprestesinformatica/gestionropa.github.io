@@ -53,31 +53,23 @@ const getUserClosetInformation = ai.defineTool(
       return { closetSummary: "No se pudo acceder a la información del armario debido a un problema de conexión con la base de datos." };
     }
     try {
-      // Fetch all non-archived prendas
       const { data: dbData, error: dbError } = await supabase
         .from('prendas')
         .select('*')
-        .eq('is_archived', false);
+        .eq('is_archived', false)
+        .eq('estilo', input.style.toLowerCase()); // Filter by style directly in query
 
       if (dbError) {
         console.error("Supabase error fetching prendas for tool:", dbError);
         return { closetSummary: "No se pudo obtener la información del armario en este momento debido a un error de la base de datos." };
       }
       
-      if (!dbData) {
-        return { closetSummary: "No hay prendas activas en el armario del usuario." };
+      if (!dbData || dbData.length === 0) {
+        return { closetSummary: `El armario del usuario no tiene artículos que coincidan con el estilo ${input.style} o están todos archivados.` };
       }
 
       const allClientPrendas: Prenda[] = dbData.map(mapDbPrendaToClient);
-
-      // Filter by style first
-      const styleFilteredPrendas = allClientPrendas.filter(p => p.estilo.toLowerCase() === input.style.toLowerCase());
-
-      if (styleFilteredPrendas.length === 0) {
-        return { closetSummary: `El armario del usuario no tiene artículos que coincidan con el estilo ${input.style} o están todos archivados.` };
-      }
       
-      // Parse temperature range
       const tempMatch = input.temperatureRange.match(/(-?\d+)\s*-\s*(-?\d+)/);
       let minUserTemp: number | null = null;
       let maxUserTemp: number | null = null;
@@ -86,16 +78,14 @@ const getUserClosetInformation = ai.defineTool(
         maxUserTemp = parseInt(tempMatch[2], 10);
       } else {
         console.warn(`Could not parse temperature range: ${input.temperatureRange}`);
-        // If temp range is not parsable, proceed without temp filtering or return a specific message
         return { closetSummary: `No se pudo determinar el rango de temperatura para filtrar el armario de estilo ${input.style}.`};
       }
 
-      const relevantPrendas = styleFilteredPrendas.filter(p => {
+      const relevantPrendas = allClientPrendas.filter(p => {
         if (minUserTemp !== null && maxUserTemp !== null && typeof p.temperatura_min === 'number' && typeof p.temperatura_max === 'number') {
-          // Check for overlap: prenda_min <= user_max AND prenda_max >= user_min
           return p.temperatura_min <= maxUserTemp && p.temperatura_max >= minUserTemp;
         }
-        return true; // If prenda has no temp range, or user temp range not parsed, include it (or define stricter logic)
+        return true; 
       });
 
 
@@ -113,7 +103,7 @@ const getUserClosetInformation = ai.defineTool(
         if (count > 1) {
           summaryParts.push(`varias ${type.toLowerCase()}s`);
         } else {
-          summaryParts.push(`algunas ${type.toLowerCase()}s`); // "una" or "algunas" could be more natural
+          summaryParts.push(`una ${type.toLowerCase()}`); 
         }
       }
 
@@ -144,10 +134,9 @@ const prompt = ai.definePrompt({
   input: { schema: GenerateOutfitExplanationInputSchema },
   output: { schema: GenerateOutfitExplanationOutputSchema },
   tools: [getUserClosetInformation],
-  prompt: `Eres un asistente de moda IA amigable y experto. Tu tarea es generar una explicación cálida, útil y personalizada para el siguiente atuendo sugerido.
-El atuendo ya ha sido seleccionado del armario del usuario.
+  prompt: `Eres un asistente de moda IA amigable, experto y muy útil. Tu tarea principal es generar una explicación cálida, detallada y personalizada para el siguiente atuendo sugerido, que ya ha sido seleccionado del armario del usuario.
 
-Detalles del Atuendo:
+Detalles del Atuendo (ya seleccionado):
 - Descripción del Atuendo: {{{outfitDescription}}}
 - Rango de Temperatura: {{{temperatureRange}}}
 - Estilo Seleccionado: {{{selectedStyle}}}
@@ -159,19 +148,28 @@ Detalles del Atuendo:
 {{/if}}
 
 Instrucciones para la explicación:
-1.  Tono: Sé amigable, positivo y da consejos como si fueras un estilista personal.
-2.  Contenido:
-    *   Explica POR QUÉ esta combinación de prendas (de {{{outfitDescription}}}) es una buena elección considerando el rango de temperatura, el estilo seleccionado y la ocasión (si se proporciona).
-    *   No repitas literalmente la descripción del atuendo. En lugar de eso, comenta sobre cómo las piezas funcionan juntas.
-    *   Por ejemplo, en lugar de decir "Una camiseta y jeans", podrías decir "La combinación de una camiseta cómoda con unos jeans versátiles crea un look relajado y funcional..."
-3.  Personalización (si {{{userClosetInformationNeeded}}} es true):
+1.  Tono: Sé amigable, positivo y da consejos como si fueras un estilista personal experto. Usa un lenguaje natural y cercano.
+2.  Principios de un Buen Atuendo: Al formular tu explicación, considera que un conjunto bien armado usualmente incluye prendas para las categorías principales: Cuerpo (ej. camisa, remera), Piernas (ej. pantalón, falda), Zapatos y Abrigos (este último, si la temperatura o la ocasión lo ameritan).
+3.  Contenido Principal:
+    *   Explica POR QUÉ esta combinación de prendas (de {{{outfitDescription}}}) es una buena elección.
+    *   No repitas literalmente la descripción del atuendo. En lugar de eso, comenta sobre cómo las piezas funcionan juntas para lograr el estilo {{{selectedStyle}}} y adaptarse al rango de temperatura y ocasión (si se proporciona). Por ejemplo, en lugar de decir "Una camiseta y jeans", podrías decir "La combinación de una camiseta cómoda con unos jeans versátiles crea un look relajado y funcional..."
+    *   Relaciona la selección con los "Principios de un Buen Atuendo" (punto 2). Si el atuendo sugerido ({{{outfitDescription}}}) no incluye una prenda para cada categoría principal (Cuerpo, Piernas, Zapatos, Abrigos), explica por qué sigue siendo adecuado (ej. "Para este clima cálido, un abrigo no es necesario, y el enfoque está en la comodidad de la parte superior y los pantalones.").
+4.  Combinación de Colores:
+    *   Analiza y comenta la armonía de colores en el atuendo {{{outfitDescription}}}.
+    *   Asegúrate que los colores combinen siguiendo reglas básicas de armonía cromática.
+    *   Idealmente, no debería haber más de 3 colores diferentes en el outfit completo (sin contar variaciones muy sutiles o estampados que integren esos colores).
+    *   Recuerda: colores neutros (Negro, Blanco, Gris, Beige) combinan con casi todo. Se pueden combinar colores complementarios (Rojo con Verde, Azul con Naranja, Amarillo con Violeta) con cuidado. Evita combinaciones visualmente conflictivas como Rojo intenso con Rosa fuerte, o Marrón oscuro con Negro (a menos que sea una elección de estilo deliberada y sofisticada).
+5.  Adecuación del Abrigo:
+    *   Si la temperatura ({{{temperatureRange}}}) es superior a 22°C, un abrigo generalmente no es necesario, a menos que la ocasión ({{{ocasion}}}) sea formal o de noche. Justifica la presencia o ausencia del abrigo.
+    *   Los zapatos deben ser acordes al nivel de formalidad del resto del outfit y la ocasión.
+6.  Personalización (si {{{userClosetInformationNeeded}}} es true):
     *   Utiliza la herramienta 'getUserClosetInformation' para obtener un resumen de OTROS artículos relevantes en el armario del usuario que coincidan con el estilo y la temperatura.
     *   Integra esta información de forma natural. Por ejemplo: "Este conjunto es una excelente opción, y dado que en tu armario tienes [resumen de la herramienta getUserClosetInformation], podrás combinar estas piezas de múltiples maneras." o "Como ya cuentas con varias prendas de estilo {{{selectedStyle}}} que se adaptan a este clima, este atuendo te resultará fácil de armar y muy versátil."
     *   El objetivo es hacer que el usuario sienta que la sugerencia es coherente con lo que ya posee y su estilo.
-4.  Naturalidad: Evita frases robóticas. Haz que la explicación fluya como una conversación.
-5.  Ejemplo de inicio: "¡Este look es perfecto para..." o "Para un día con temperaturas entre..., te sugiero..."
+7.  Naturalidad: Evita frases robóticas. Haz que la explicación fluya como una conversación.
+8.  Ejemplo de inicio: "¡Este look es perfecto para..." o "Para un día con temperaturas entre..., te sugiero..."
 
-Genera la explicación.
+Genera la explicación detallada y útil.
   `,
 });
 
@@ -188,8 +186,10 @@ const generateOutfitExplanationFlow = ai.defineFlow(
     }
     const { output } = await prompt(input);
     if (!output) {
+      console.warn("AI prompt did not return an output for input:", JSON.stringify(input));
       return { explanation: "No se pudo generar una explicación en este momento. Por favor, intenta de nuevo." };
     }
     return output;
   }
 );
+
