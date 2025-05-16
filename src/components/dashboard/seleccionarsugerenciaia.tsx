@@ -1,4 +1,3 @@
-
 // src/app/page.tsx (New Homepage - now the Dashboard)
 'use client';
 
@@ -237,5 +236,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
