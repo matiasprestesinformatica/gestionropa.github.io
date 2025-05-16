@@ -7,16 +7,17 @@ import { Navbar } from '@/components/ui/Navbar';
 import { Footer } from '@/components/ui/Footer';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ColorDistributionChart } from '@/components/dashboard/ColorDistributionChart';
-import { OutfitSuggestion } from '@/components/OutfitSuggestion';
+// import { OutfitSuggestion } from '@/components/OutfitSuggestion'; // Replaced by SeleccionarSugerencias
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid, CalendarClock } from 'lucide-react';
-import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types';
-import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions';
+import type { SuggestedOutfit, StatisticsSummary, ColorFrequency, Prenda, OutfitItem } from '@/types';
+import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction, getPrendasAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-// import { NuevoPrompts } from '@/components/dashboard/nuevoprompts'; // No longer used directly if PromtOptimizado handles its own content
-// import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado'; // Removed this import
-import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester'; // Import the new component
+import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester';
+import { OutfitExplanation } from '@/components/OutfitExplanation';
+import { SeleccionarSugerencias } from '@/components/dashboard/SeleccionarSugerencias';
+
 
 const mockStatsSummary: StatisticsSummary = {
   totalPrendas: 0,
@@ -41,11 +42,21 @@ export default function HomePage() {
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
 
+  const [originalRandomTemp, setOriginalRandomTemp] = React.useState<[number, number] | null>(null);
+  const [originalRandomStyle, setOriginalRandomStyle] = React.useState<string | null>(null);
+  const [availablePrendas, setAvailablePrendas] = React.useState<Prenda[]>([]);
+
+
   const fetchDashboardData = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const statsResult = await getStatisticsSummaryAction();
+      const [statsResult, colorsResult, prendasResult] = await Promise.all([
+        getStatisticsSummaryAction(),
+        getColorDistributionStatsAction(),
+        getPrendasAction(),
+      ]);
+
       if (statsResult.error || !statsResult.data) {
         console.warn("Error fetching stats summary:", statsResult.error);
         setStats(mockStatsSummary);
@@ -53,12 +64,18 @@ export default function HomePage() {
         setStats(statsResult.data);
       }
 
-      const colorsResult = await getColorDistributionStatsAction();
       if (colorsResult.error || !colorsResult.data) {
          console.warn("Error fetching color distribution:", colorsResult.error);
          setColorFrequency(mockColorFrequency);
       } else {
         setColorFrequency(colorsResult.data.length > 0 ? colorsResult.data : mockColorFrequency);
+      }
+
+      if (prendasResult.error || !prendasResult.data) {
+        console.warn("Error fetching available prendas:", prendasResult.error);
+        setAvailablePrendas([]);
+      } else {
+        setAvailablePrendas(prendasResult.data.filter(p => !p.is_archived));
       }
       
       const totalPrendasForSuggestion = statsResult.data?.totalPrendas ?? 0;
@@ -68,9 +85,13 @@ export default function HomePage() {
         const randomStyle = styles[Math.floor(Math.random() * styles.length)];
         const randomTempMin = Math.floor(Math.random() * 20) + 5;
         const randomTempMax = randomTempMin + Math.floor(Math.random() * 10) + 5;
+        const tempRange: [number, number] = [randomTempMin, randomTempMax];
+
+        setOriginalRandomTemp(tempRange);
+        setOriginalRandomStyle(randomStyle);
 
         const suggestionResult = await getAISuggestionAction({
-          temperature: [randomTempMin, randomTempMax],
+          temperature: tempRange,
           styleId: randomStyle,
           useClosetInfo: true,
         });
@@ -155,27 +176,36 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg rounded-xl">
-            <CardHeader>
-              <CardTitle>Sugerencia Rápida AI</CardTitle>
-              <CardDescription>Un look aleatorio para inspirarte desde tu armario.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {randomSuggestion ? (
-                <OutfitSuggestion suggestion={randomSuggestion} />
-              ) : (
-                 stats.totalPrendas > 0 ? 
-                 <p className="text-muted-foreground text-center py-8">No se pudo generar una sugerencia aleatoria en este momento.</p>
-                 : <p className="text-muted-foreground text-center py-8">Agrega prendas a tu armario para recibir sugerencias.</p>
-              )}
-            </CardContent>
-          </Card>
+          {randomSuggestion && originalRandomTemp && originalRandomStyle && availablePrendas.length > 0 ? (
+             <SeleccionarSugerencias
+                initialSuggestion={randomSuggestion}
+                originalTemperature={originalRandomTemp}
+                originalStyleId={originalRandomStyle}
+                availablePrendasForLookForm={availablePrendas}
+              />
+          ) : (
+            <Card className="shadow-lg rounded-xl">
+              <CardHeader>
+                <CardTitle>Sugerencia Rápida AI</CardTitle>
+                <CardDescription>Un look aleatorio para inspirarte desde tu armario.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {stats.totalPrendas > 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Generando sugerencia...</p>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">Agrega prendas a tu armario para recibir sugerencias.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
+
+        {randomSuggestion?.explanation && (
+            <OutfitExplanation explanation={randomSuggestion.explanation} />
+        )}
         
         <div className="grid grid-cols-1 gap-8">
            <OptimizedOutfitSuggester />
-           {/* <PromtOptimizado /> Removed this component from rendering */}
-           {/* <NuevoPrompts suggestionForDisplay={randomSuggestion} />  Potentially redundant or can be merged */}
         </div>
 
       </main>
