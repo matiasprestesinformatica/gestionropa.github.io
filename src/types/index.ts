@@ -20,7 +20,7 @@ export interface StyleOption {
 }
 
 export interface OutfitItem {
-  id: string;
+  id: string; // Was number, changed to string to align with getAISuggestionAction
   name: string;
   imageUrl: string;
   category: string;
@@ -39,19 +39,19 @@ export const TIPO_PRENDA_ENUM_VALUES = ['Cuerpo', 'Piernas', 'Zapatos', 'Abrigos
 export type TipoPrenda = typeof TIPO_PRENDA_ENUM_VALUES[number];
 
 export interface Prenda {
-  id: number;
+  id: number; // Changed from UUID to SERIAL (number)
   created_at: string;
   nombre: string;
-  tipo: TipoPrenda | string; // Can still be string for flexibility if needed, but forms will use enum
-  color: PrendaColor | string;
-  modelo: string;
+  tipo: TipoPrenda;
+  color: PrendaColor;
+  modelo: string; // Changed from talla
   temporada: string;
-  fechacompra: string; // YYYY-MM-DD
+  fechacompra: string; // Changed from ocasion, should be YYYY-MM-DD
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
   estilo: string;
-  is_archived?: boolean;
+  is_archived: boolean; // Added for /archivo page
 }
 
 export const SEASONS = ['Verano', 'Invierno', 'Otoño', 'Primavera', 'Todo el Año'] as const;
@@ -60,7 +60,7 @@ export type TemporadaPrenda = typeof SEASONS[number];
 export type EstiloPrenda = StyleOption['id'];
 
 
-// --- Looks Page Types ---
+// --- Looks Page Types ---\
 export interface Look {
   id: number;
   created_at: string;
@@ -114,7 +114,7 @@ export interface CalendarAssignmentFormData {
 }
 
 
-// --- Wishlist Page Types ---
+// --- Wishlist Page Types ---\
 export interface WishlistItem {
   id: string;
   name: string;
@@ -129,7 +129,7 @@ export interface WishlistItem {
 export type WishlistFormData = Omit<WishlistItem, 'id' | 'status' | 'added_at'>;
 
 // --- Dashboard & Statistics Types ---
-export interface DashboardStats {
+export interface DashboardStats { // Original, might be deprecated by StatisticsSummary for / page
   totalPrendas: number;
   totalLooks: number;
 }
@@ -152,7 +152,9 @@ export interface TimeActivityStat {
   fill?: string;
 }
 
-export interface StatisticsSummary extends DashboardStats {
+export interface StatisticsSummary { // Used by /statistics and new / page
+  totalPrendas: number;
+  totalLooks: number;
   prendasPorEstiloCount: number;
   looksUsadosEsteMes: number;
 }
@@ -161,7 +163,7 @@ export interface IntelligentInsightData {
   dominantStyle?: { name: string; percentage: number };
 }
 
-// --- HomePage Enhancement Types ---
+// --- SugerenciaIA Page (formerly HomePage) Types ---
 export interface HistoricalSuggestion {
   id: string;
   timestamp: number;
@@ -170,3 +172,16 @@ export interface HistoricalSuggestion {
   useClosetInfo: boolean;
   suggestion: SuggestedOutfit;
 }
+
+// --- Optimized Outfit Suggester Types ---
+export interface OptimizedOutfitParams {
+  temperature: number;
+  season: TemporadaPrenda;
+}
+
+export const NEUTRAL_COLORS: PrendaColor[] = ['Negro', 'Blanco', 'Gris', 'Beige'];
+export const DIFFICULT_COLOR_PAIRS: [PrendaColor, PrendaColor][] = [
+  ['Marrón', 'Negro'],
+  ['Rojo', 'Rosa'],
+  // Add more pairs if needed, e.g., ['Verde', 'Naranja'] if you consider it difficult
+];

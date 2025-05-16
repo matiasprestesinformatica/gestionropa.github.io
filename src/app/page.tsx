@@ -1,5 +1,5 @@
 
-// src/app/page.tsx (New Homepage - formerly Dashboard)
+// src/app/page.tsx (New Homepage - now the Dashboard)
 'use client';
 
 import * as React from 'react';
@@ -10,12 +10,13 @@ import { ColorDistributionChart } from '@/components/dashboard/ColorDistribution
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid, CalendarClock } from 'lucide-react'; // Added LayoutGrid, CalendarClock
-import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types'; // Updated DashboardStats to StatisticsSummary
-import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions'; // Updated imports
+import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid, CalendarClock } from 'lucide-react';
+import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types';
+import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { NuevoPrompts } from '@/components/dashboard/nuevoprompts';
-import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado'; // Import the new component
+import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado';
+import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester'; // Import the new component
 
 const mockStatsSummary: StatisticsSummary = {
   totalPrendas: 0,
@@ -44,17 +45,14 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch stats summary
       const statsResult = await getStatisticsSummaryAction();
       if (statsResult.error || !statsResult.data) {
         console.warn("Error fetching stats summary:", statsResult.error);
-        // Continue with mock/default stats for some parts
         setStats(mockStatsSummary);
       } else {
         setStats(statsResult.data);
       }
 
-      // Fetch color distribution
       const colorsResult = await getColorDistributionStatsAction();
       if (colorsResult.error || !colorsResult.data) {
          console.warn("Error fetching color distribution:", colorsResult.error);
@@ -63,7 +61,6 @@ export default function HomePage() {
         setColorFrequency(colorsResult.data.length > 0 ? colorsResult.data : mockColorFrequency);
       }
       
-      // Fetch prendas count for suggestion logic (re-using totalPrendas from stats if available)
       const totalPrendasForSuggestion = statsResult.data?.totalPrendas ?? 0;
 
       if (totalPrendasForSuggestion > 0) {
@@ -134,7 +131,8 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard de EstilosIA</h1>
+        
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard title="Total de Prendas" value={stats.totalPrendas.toString()} icon={Shirt} description="Prendas activas en tu armario" />
           <StatsCard title="Looks Guardados" value={stats.totalLooks.toString()} icon={Sparkles} description="Combinaciones creadas" />
@@ -142,7 +140,7 @@ export default function HomePage() {
           <StatsCard title="Looks Usados (Mes)" value={stats.looksUsadosEsteMes.toString()} icon={CalendarClock} description="Asignaciones en calendario" />
         </div>
         
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2"> 
+        <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-2"> 
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle>Distribución de Colores</CardTitle>
@@ -159,8 +157,8 @@ export default function HomePage() {
 
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
-              <CardTitle>Sugerencia Rápida</CardTitle>
-              <CardDescription>Un look aleatorio para inspirarte.</CardDescription>
+              <CardTitle>Sugerencia Rápida AI</CardTitle>
+              <CardDescription>Un look aleatorio para inspirarte desde tu armario.</CardDescription>
             </CardHeader>
             <CardContent>
               {randomSuggestion ? (
@@ -175,10 +173,9 @@ export default function HomePage() {
         </div>
         
         <div className="grid grid-cols-1 gap-8">
-           <PromtOptimizado /> {/* Added the new component here */}
-           {/* The NuevoPrompts component might be redundant now or could be merged with PromtOptimizado */}
-           {/* For now, I'll leave NuevoPrompts if it serves a distinct purpose for other AI prompts */}
-           <NuevoPrompts suggestionForDisplay={randomSuggestion} />
+           <OptimizedOutfitSuggester />
+           <PromtOptimizado />
+           {/* <NuevoPrompts suggestionForDisplay={randomSuggestion} />  Potentially redundant or can be merged */}
         </div>
 
       </main>

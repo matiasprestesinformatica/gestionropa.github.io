@@ -2,8 +2,8 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, TipoPrenda, PrendaColor } from '@/types';
-import { PRENDA_COLORS, TIPO_PRENDA_ENUM_VALUES } from '@/types';
+import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, TipoPrenda, PrendaColor, OptimizedOutfitParams, TemporadaPrenda } from '@/types';
+import { PRENDA_COLORS, TIPO_PRENDA_ENUM_VALUES, SEASONS, NEUTRAL_COLORS, DIFFICULT_COLOR_PAIRS } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -73,11 +73,11 @@ export async function getAISuggestionAction(
     }
 
     const outfitItems: OutfitItem[] = selectedClientItems.map(p => ({
-      id: p.id.toString(), // ID es ahora number
+      id: p.id.toString(),
       name: p.nombre,
       imageUrl: p.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(p.nombre)}`,
       category: p.tipo as string, 
-      color: p.color as PrendaColor, // Cast to PrendaColor
+      color: p.color as PrendaColor,
       aiHint: `${p.tipo.toLowerCase()} ${p.color ? p.color.toLowerCase() : ''}`.trim().substring(0,50) || p.nombre.toLowerCase(),
     }));
 
@@ -108,15 +108,15 @@ const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { required_error: "Por favor selecciona un tipo válido."}),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, "El modelo es requerido."),
-  temporada: z.string().min(1, "La temporada es requerida."),
+  modelo: z.string().min(1, "El modelo es requerido."), // Was talla
+  temporada: z.enum(SEASONS, {required_error: "Por favor selecciona una temporada válida."}),
   fechacompra: z.string().refine((val) => { 
     if (val === '' || val === null || val === undefined) return true; 
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
     message: "La fecha de compra debe ser válida (YYYY-MM-DD) o estar vacía.",
-  }).optional().nullable(),
+  }).optional().nullable(), // Was ocasion
   imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
@@ -130,7 +130,6 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     console.error("Supabase client is not initialized in addPrendaAction. Check environment variables.");
     return { error: "Error de conexión con la base de datos. Por favor, inténtalo más tarde." };
   }
-
   const rawFormData = Object.fromEntries(formData.entries());
   const validatedFields = PrendaFormSchema.safeParse(rawFormData);
 
@@ -147,9 +146,9 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     nombre,
     tipo,
     color,
-    modelo, 
+    modelo, // DB column is modelo (was talla)
     temporada,
-    fechacompra: fechacompra || null, 
+    fechacompra: fechacompra || null, // DB column is fechacompra (was ocasion)
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -183,7 +182,6 @@ export async function getPrendasAction(): Promise<{ data?: Prenda[]; error?: str
     console.error("Supabase client is not initialized in getPrendasAction. Check environment variables.");
     return { error: "Error de conexión con la base de datos. Por favor, inténtalo más tarde.", data: [] };
   }
-
   try {
     const { data: dbData, error } = await supabase
       .from('prendas')
@@ -206,7 +204,6 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     console.error("Supabase client is not initialized in updatePrendaAction. Check environment variables.");
     return { error: "Error de conexión con la base de datos. Por favor, inténtalo más tarde." };
   }
-
   const rawFormData = Object.fromEntries(formData.entries());
   const validatedFields = PrendaFormSchema.safeParse(rawFormData);
 
@@ -223,9 +220,9 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     nombre,
     tipo,
     color,
-    modelo, 
+    modelo, // DB column is modelo (was talla)
     temporada,
-    fechacompra: fechacompra || null, 
+    fechacompra: fechacompra || null, // DB column is fechacompra (was ocasion)
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -255,6 +252,7 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
   }
 }
 
+// ... (deletePrendaAction, Look Actions, Calendar Actions, Statistics Actions remain largely the same but should use the updated mapDbPrendaToClient where applicable)
 export async function deletePrendaAction(itemId: number): Promise<{ success?: boolean; error?: string }> {
   if (!supabase) {
     console.error("Supabase client is not initialized in deletePrendaAction. Check environment variables.");
@@ -262,6 +260,17 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
   }
 
   try {
+    // Before deleting a prenda, delete related entries in look_prendas
+    const { error: lookPrendasError } = await supabase
+      .from('look_prendas')
+      .delete()
+      .eq('prenda_id', itemId);
+
+    if (lookPrendasError) {
+      // Log the error but attempt to continue deleting the prenda itself
+      console.error('Error deleting related look_prendas entries:', lookPrendasError);
+    }
+    
     const { error } = await supabase
       .from('prendas')
       .delete()
@@ -307,7 +316,7 @@ export async function getLooksAction(): Promise<{ data?: Look[]; error?: string 
 
     const formattedLooks: Look[] = looksData.map(look => ({
       ...look,
-      prendas: look.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas))
+      prendas: look.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[] // Ensure no nulls
     }));
 
     return { data: formattedLooks };
@@ -341,7 +350,7 @@ export async function getLookByIdAction(lookId: number): Promise<{ data?: Look; 
 
     const formattedLook: Look = {
         ...lookData,
-        prendas: lookData.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas))
+        prendas: lookData.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[]
     };
     return { data: formattedLook };
 
@@ -476,6 +485,20 @@ export async function deleteLookAction(lookId: number): Promise<{ success?: bool
     return { error: "Error de conexión con la base de datos. Por favor, inténtalo más tarde." };
   }
   try {
+    // Deleting from 'look_prendas' first due to foreign key constraints,
+    // or ensure ON DELETE CASCADE is set up correctly on the foreign key in 'look_prendas' referencing 'looks.id'
+    const { error: lookPrendasError } = await supabase
+        .from('look_prendas')
+        .delete()
+        .eq('look_id', lookId);
+
+    if (lookPrendasError) {
+        console.error('Error deleting related look_prendas entries:', lookPrendasError);
+        // Decide if you want to throw this error or attempt to delete the look anyway
+        // For now, let's throw to be safe and indicate a potential DB integrity issue
+        throw lookPrendasError; 
+    }
+    
     const { error } = await supabase
       .from('looks')
       .delete()
@@ -536,15 +559,15 @@ export async function getCalendarAssignmentsAction(
           fecha: assignment.fecha,
           look: {
             ...assignment.looks,
-            prendas: assignment.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)),
+            prendas: assignment.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[],
           },
           prenda: null,
           prenda_id: null,
         } as LookCalendarAssignment;
       }
-      console.warn("Found assignment without valid prenda or look reference:", assignment.id)
-      return { ...assignment, fecha: assignment.fecha, prenda: null, look: null }; 
-    }).filter(Boolean) as CalendarAssignment[]; 
+      // console.warn("Found assignment without valid prenda or look reference:", assignment.id)
+      return null; // Return null for invalid assignments
+    }).filter(Boolean) as CalendarAssignment[];  // Filter out nulls
     return { data: formattedAssignments };
   } catch (error) {
     console.error('Error fetching calendar assignments:', error);
@@ -602,7 +625,7 @@ export async function addCalendarAssignmentAction(
             fecha: data.fecha,
             look: {
                 ...data.looks,
-                prendas: data.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas))
+                prendas: data.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[]
             },
             prenda: null, prenda_id: null
         } as LookCalendarAssignment;
@@ -668,7 +691,7 @@ export async function updateCalendarAssignmentAction(
             fecha: data.fecha,
             look: {
                 ...data.looks,
-                prendas: data.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas))
+                prendas: data.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[]
             },
             prenda: null, prenda_id: null
         } as LookCalendarAssignment;
@@ -755,7 +778,6 @@ export async function getStatisticsSummaryAction(): Promise<{ data?: StatisticsS
 
     if(looksUsadosError) {
         console.warn("[STATS_WARN] Supabase error fetching looks used this month, defaulting to 0:", JSON.stringify(looksUsadosError, null, 2));
-        // Not returning error for this one, just defaulting to 0 if it fails.
     }
 
 
@@ -780,7 +802,7 @@ const PRENDA_COLOR_MAP_FULL: Record<string, string> = {
   'Verde': 'hsl(142, 71%, 45%)',
   'Amarillo': 'hsl(48, 96%, 53%)',
   'Negro': 'hsl(0, 0%, 10%)',
-  'Blanco': 'hsl(0, 0%, 95%)', // Slightly off-white for visibility
+  'Blanco': 'hsl(0, 0%, 100%)', // Pure white for better visibility on colored backgrounds
   'Gris': 'hsl(215, 14%, 65%)',
   'Marrón': 'hsl(30, 47%, 40%)',
   'Naranja': 'hsl(25, 95%, 53%)',
@@ -803,10 +825,10 @@ const PRENDA_COLOR_MAP_FULL: Record<string, string> = {
   'Caqui': 'hsl(39, 31%, 56%)',
   'Borgoña': 'hsl(348, 70%, 40%)',
   'Fucsia': 'hsl(327, 100%, 54%)',
-  'Cuadrille': 'hsl(var(--chart-1))', // Fallback, can be more specific
-  'Estampado': 'hsl(var(--chart-2))', // Fallback
-  'Multicolor': 'hsl(var(--chart-3))', // Fallback
-  'Otro': 'hsl(var(--chart-4))', // Fallback
+  'Cuadrille': 'hsl(var(--chart-3))', 
+  'Estampado': 'hsl(var(--chart-4))',
+  'Multicolor': 'hsl(var(--chart-5))',
+  'Otro': 'hsl(var(--muted))',
 };
 
 
@@ -820,7 +842,7 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
       .from('prendas')
       .select('color')
       .eq('is_archived', false)
-      .not('color', 'is', null);
+      .not('color', 'is', null); // Ensure color column is not null
 
     if (dbError) {
       console.error("[STATS_ERROR] Supabase error fetching prendas for color distribution:", JSON.stringify(dbError, null, 2));
@@ -829,13 +851,20 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
 
     if (!prendasData || prendasData.length === 0) {
       console.log("[STATS_INFO] No active prendas with colors found for color distribution.");
-      return { data: [] };
+      return { data: [] }; // Return empty data, not an error
     }
 
     const colorCounts: Record<string, number> = {};
     prendasData.forEach(p => {
-      if (p.color) { 
+      if (p.color && PRENDA_COLORS.includes(p.color as PrendaColor)) { // Validate against ENUM
         colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
+      } else if (p.color) {
+        // Optionally log unexpected colors if they aren't in PRENDA_COLORS
+        // console.warn(`[STATS_WARN] Unexpected color value from DB not in PRENDA_COLORS: ${p.color}`);
+        // For now, we'll count them under 'Otro' if 'Otro' is a valid ENUM value
+        if (PRENDA_COLORS.includes('Otro')) {
+           colorCounts['Otro'] = (colorCounts['Otro'] || 0) + 1;
+        }
       }
     });
     
@@ -843,9 +872,10 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
     let fallbackIndex = 0;
 
     const colorFrequencyData: ColorFrequency[] = Object.entries(colorCounts)
+      .filter(([, count]) => count > 0) // Ensure we only process colors with a count > 0
       .map(([color, count]) => {
         let fill = PRENDA_COLOR_MAP_FULL[color as keyof typeof PRENDA_COLOR_MAP_FULL];
-        if (!fill) { // If color not in map, use fallback
+        if (!fill) { 
           fill = chartColorsFallback[fallbackIndex % chartColorsFallback.length];
           fallbackIndex++;
         }
@@ -936,8 +966,7 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
     }
     if (!data || data.length === 0) {
         console.log("[STATS_INFO] No calendar assignments found for time activity stats.");
-        // Still return labels so chart renders with zeros
-         const emptyTimeActivityStats: TimeActivityStat[] = monthLabels.map((label, index) => ({
+        const emptyTimeActivityStats: TimeActivityStat[] = monthLabels.map((label, index) => ({
           date: label,
           count: 0,
           fill: ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))', 'hsl(var(--destructive))'][index % 6] 
@@ -954,10 +983,10 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
             activityData[monthKey]++;
             }
         } else {
-            console.warn(`[STATS_WARN] Invalid date found in calendar assignment: ${assignment.fecha}`);
+            // console.warn(`[STATS_WARN] Invalid date found in calendar assignment: ${assignment.fecha}`);
         }
       } catch(e) {
-          console.warn(`[STATS_WARN] Error parsing date ${assignment.fecha} in calendar assignment:`, e);
+        //   console.warn(`[STATS_WARN] Error parsing date ${assignment.fecha} in calendar assignment:`, e);
       }
     });
 
@@ -1013,4 +1042,132 @@ export async function getIntelligentInsightDataAction(): Promise<{data?: Intelli
     }
 }
 
-    
+// --- Optimized Outfit Suggester Action ---
+export async function generateOptimizedOutfitSuggestionAction(
+  params: OptimizedOutfitParams
+): Promise<SuggestedOutfit | { error: string }> {
+  if (!supabase) {
+    console.error("Supabase client is not initialized in generateOptimizedOutfitSuggestionAction.");
+    return { error: "Error de conexión con la base de datos." };
+  }
+
+  try {
+    const { temperature, season } = params;
+
+    const { data: allDbPrendas, error: prendasError } = await supabase
+      .from('prendas')
+      .select('*')
+      .eq('is_archived', false);
+
+    if (prendasError) {
+      console.error("Error fetching prendas for optimized suggestion:", prendasError);
+      return { error: `Error al obtener prendas: ${prendasError.message}` };
+    }
+    if (!allDbPrendas || allDbPrendas.length === 0) {
+      return { error: "Tu armario está vacío o no tiene prendas activas." };
+    }
+
+    const allPrendas: Prenda[] = allDbPrendas.map(mapDbPrendaToClient);
+
+    // 1. Filter by season and temperature
+    const suitablePrendas = allPrendas.filter(p =>
+      (p.temporada === season || p.temporada === 'Todo el Año') &&
+      (p.temperatura_min === null || p.temperatura_min <= temperature) &&
+      (p.temperatura_max === null || p.temperatura_max >= temperature)
+    );
+
+    if (suitablePrendas.length < 3) { // Need at least Cuerpo, Piernas, Zapatos
+      return { error: "No hay suficientes prendas adecuadas para la temperatura y estación seleccionadas." };
+    }
+
+    const prendasPorTipo: Record<TipoPrenda, Prenda[]> = {
+      'Cuerpo': [],
+      'Piernas': [],
+      'Zapatos': [],
+      'Abrigos': [],
+      'Accesorios': [], // Not used yet but for completeness
+    };
+
+    suitablePrendas.forEach(p => {
+      if (prendasPorTipo[p.tipo]) {
+        prendasPorTipo[p.tipo].push(p);
+      }
+    });
+
+    if (prendasPorTipo['Cuerpo'].length === 0 || prendasPorTipo['Piernas'].length === 0 || prendasPorTipo['Zapatos'].length === 0) {
+      return { error: "Faltan prendas en categorías esenciales (Cuerpo, Piernas, Zapatos) para las condiciones dadas." };
+    }
+
+    const MAX_ATTEMPTS = 20;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const outfitCandidate: Prenda[] = [];
+
+      // Select Cuerpo
+      if (prendasPorTipo['Cuerpo'].length > 0) {
+        outfitCandidate.push(shuffleArray(prendasPorTipo['Cuerpo'])[0]);
+      } else continue; // Not enough items for essential category
+
+      // Select Piernas
+      if (prendasPorTipo['Piernas'].length > 0) {
+        outfitCandidate.push(shuffleArray(prendasPorTipo['Piernas'])[0]);
+      } else continue;
+
+      // Select Zapatos
+      if (prendasPorTipo['Zapatos'].length > 0) {
+        outfitCandidate.push(shuffleArray(prendasPorTipo['Zapatos'])[0]);
+      } else continue;
+      
+      // Coat Logic
+      if (temperature <= 22 && prendasPorTipo['Abrigos'].length > 0) {
+        outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
+      } else if (temperature > 22 && prendasPorTipo['Abrigos'].length > 0 && Math.random() < 0.3) { // Optional coat for warmer weather
+        // For formal/night occasions, this logic could be more specific if 'ocasion' was part of input
+         outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
+      }
+
+      // Color Harmony Validation
+      const currentColors = outfitCandidate.map(p => p.color);
+      const distinctNonNeutralColors = currentColors.filter(c => !NEUTRAL_COLORS.includes(c));
+      const uniqueNonNeutralColors = new Set(distinctNonNeutralColors);
+
+      if (uniqueNonNeutralColors.size > 3) continue; // Too many non-neutral colors
+
+      let hasDifficultPair = false;
+      for (const pair of DIFFICULT_COLOR_PAIRS) {
+        if (currentColors.includes(pair[0]) && currentColors.includes(pair[1])) {
+          hasDifficultPair = true;
+          break;
+        }
+      }
+      if (hasDifficultPair) continue;
+      
+      // If we reach here, the outfit is valid
+      const outfitItems: OutfitItem[] = outfitCandidate.map(p => ({
+        id: p.id.toString(),
+        name: p.nombre,
+        imageUrl: p.imagen_url || `https://placehold.co/300x400.png?text=${encodeURIComponent(p.nombre)}`,
+        category: p.tipo,
+        color: p.color,
+        aiHint: `${p.tipo.toLowerCase()} ${p.color.toLowerCase()}`.trim().substring(0,50) || p.nombre.toLowerCase(),
+      }));
+      
+      // Generate explanation (could use another AI flow here or a simpler template)
+      let explanation = `Sugerencia para ${temperature}°C en ${season}:\n`;
+      explanation += outfitItems.map(item => `${item.category}: ${item.name} (${item.color})`).join('\n');
+      if (!outfitItems.some(item => item.category === 'Abrigos')) {
+        explanation += "\nNo se sugiere abrigo debido a la temperatura.";
+      }
+
+      return {
+        items: outfitItems,
+        explanation,
+      };
+    }
+
+    return { error: "No se pudo encontrar una combinación de prendas armoniosa con los criterios actuales. Intenta con otras opciones o expande tu armario." };
+
+  } catch (error) {
+    console.error('Error generating optimized outfit suggestion:', error);
+    return { error: "Ocurrió un error inesperado al generar la sugerencia optimizada." };
+  }
+}
