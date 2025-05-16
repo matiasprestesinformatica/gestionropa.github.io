@@ -8,19 +8,20 @@ import type { SuggestedOutfit, OutfitItem, Prenda, TipoPrenda, PrendaColor, Look
 import { getAlternativePrendasAction, addLookAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ChangePrendaModal } from '@/components/dashboard/ChangePrendaModal'; // Assuming this stays in dashboard or is moved
+import { ChangePrendaModal } from '@/components/dashboard/ChangePrendaModal';
 import { LookForm } from '@/components/looks/LookForm';
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Sparkles, Save, Loader2, RotateCcw } from 'lucide-react';
 import { ColorSwatch } from '@/components/ColorSwatch';
 import { OutfitExplanation } from '@/components/OutfitExplanation';
 
+
 interface SeleccionarSugerenciasProps {
   initialSuggestion: SuggestedOutfit;
   originalTemperature: [number, number] | null;
   originalStyleId: string | null;
   availablePrendasForLookForm: Prenda[];
-  onSuggestionRefresh?: () => void; // Optional: to re-trigger suggestion fetch
+  onSuggestionRefresh?: () => void;
 }
 
 export function SeleccionarSugerencias({
@@ -61,7 +62,7 @@ export function SeleccionarSugerencias({
       tipo: itemToChange.category as TipoPrenda,
       temperature: originalTemperature,
       styleId: originalStyleId,
-      currentPrendaId: parseInt(itemToChange.id, 10) // Ensure ID is number
+      currentPrendaId: parseInt(itemToChange.id, 10)
     });
     
     if (result.error || !result.data) {
@@ -88,8 +89,6 @@ export function SeleccionarSugerencias({
     setCurrentOutfitItems(prevItems =>
       prevItems.map(item => (item.id === prendaToChange.id ? newOutfitItem : item))
     );
-    // Note: Re-generating explanation after item change could be a future enhancement
-    // For now, the original explanation remains.
     setIsChangeModalOpen(false);
     setPrendaToChange(null);
     setPrendaToChangeCategory(null);
@@ -105,7 +104,6 @@ export function SeleccionarSugerencias({
   };
   
   const handleLookFormSubmit = async (data: LookFormData, lookId?: number) => {
-    // This component only handles adding new looks from suggestions
     if (lookId) { 
         toast({title: "Información", description: "La edición de looks se realiza desde la página 'Mis Looks'.", variant: "default"});
         return { error: "Edición no soportada aquí."};
@@ -122,8 +120,31 @@ export function SeleccionarSugerencias({
 
   const outfitColors = Array.from(new Set(currentOutfitItems.map(item => item.color).filter(Boolean) as PrendaColor[]));
 
+  if (!currentOutfitItems || currentOutfitItems.length === 0) {
+    return (
+      <Card className="shadow-lg rounded-xl mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center text-xl font-semibold">
+            <Sparkles className="mr-2 h-6 w-6 text-primary" />
+            Sugerencia de Atuendo Rápida
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center py-8">No hay sugerencia disponible o tu armario está vacío.</p>
+          {onSuggestionRefresh && (
+             <div className="flex justify-center mt-4">
+                <Button onClick={onSuggestionRefresh} variant="outline">
+                    <RotateCcw className="mr-2 h-4 w-4" /> Nueva Sugerencia
+                </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="shadow-lg rounded-xl">
+    <Card className="shadow-lg rounded-xl mt-6">
       <CardHeader>
         <div className="flex justify-between items-center">
             <CardTitle className="flex items-center text-xl font-semibold">
@@ -152,8 +173,8 @@ export function SeleccionarSugerencias({
             </div>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {currentOutfitItems.map((item) => (
-            <Card key={item.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow rounded-lg flex flex-col group">
+          {currentOutfitItems.map((item, index) => (
+            <Card key={`${item.id}-${index}`} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow rounded-lg flex flex-col group">
               <div className="aspect-[3/4] relative w-full bg-muted">
                 <Image
                   src={item.imageUrl}
@@ -232,5 +253,3 @@ export function SeleccionarSugerencias({
     </Card>
   );
 }
-
-    
