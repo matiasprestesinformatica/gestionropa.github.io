@@ -46,7 +46,7 @@ interface LookFormProps {
   onSubmit: (data: LookFormData, lookId?: number) => Promise<{ data?: Look; error?: string; validationErrors?: z.ZodIssue[] }>;
   initialData?: Look | null;
   availablePrendas: Prenda[];
-  initialPrendaIds?: number[]; // For pre-filling when creating from suggestion
+  initialPrendaIds?: number[];
 }
 
 export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availablePrendas, initialPrendaIds }: LookFormProps) {
@@ -62,35 +62,58 @@ export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availabl
     defaultValues: {
       nombre: '',
       descripcion: '',
-      estilo: styleOptions[0]?.id || '', // Default to first style or empty if not available
+      estilo: styleOptions[0]?.id || '',
       imagen_url: '',
       prenda_ids: [],
     },
   });
+  const { control, handleSubmit, register, formState: { errors }, reset } = form;
 
   React.useEffect(() => {
-    if (isOpen) { // Reset form when dialog opens or relevant data changes
+    if (isOpen) {
       if (initialData) { // Editing an existing look
-        form.reset({
+        reset({
           nombre: initialData.nombre,
           descripcion: initialData.descripcion || '',
           estilo: initialData.estilo,
           imagen_url: initialData.imagen_url || '',
           prenda_ids: initialData.prendas.map(p => p.id),
         });
-      } else { // Creating a new look
-        form.reset({
-          nombre: '', // Consider pre-filling with a generated name if applicable
-          descripcion: '',
-          estilo: styleOptions[0]?.id || '', // Default style, could also come from suggestion
-          imagen_url: '',
-          prenda_ids: initialPrendaIds || [], // Use passed initialPrendaIds for new looks
+      } else { // Creating a new look (potentially from a suggestion)
+        const currentInitialPrendaIds = initialPrendaIds || [];
+        const availablePrendaIdsInOptions = availablePrendas.map(p => p.id);
+        
+        // console.log("LookForm: Opening for NEW look.");
+        // console.log("LookForm: initialPrendaIds received:", currentInitialPrendaIds);
+        // console.log("LookForm: IDs in availablePrendas (options):", availablePrendaIdsInOptions);
+
+        const validPrendaIdsToSelect = currentInitialPrendaIds.filter(id => 
+          availablePrendaIdsInOptions.includes(id)
+        );
+        
+        // if (validPrendaIdsToSelect.length !== currentInitialPrendaIds.length) {
+        //   console.warn(
+        //     "LookForm: Mismatch! Some initialPrendaIds are not in availablePrendas. Will only select valid ones.",
+        //     { 
+        //       initial: currentInitialPrendaIds, 
+        //       available: availablePrendaIdsInOptions,
+        //       invalid: currentInitialPrendaIds.filter(id => !availablePrendaIdsInOptions.includes(id))
+        //     }
+        //   );
+        // }
+        
+        reset({
+          nombre: '', // User should name this
+          descripcion: '', // Could be pre-filled if suggestion carried it
+          estilo: styleOptions[0]?.id || '', // Could be pre-filled from suggestion
+          imagen_url: '', // Could be pre-filled
+          prenda_ids: validPrendaIdsToSelect,
         });
       }
     }
-  }, [initialData, form, isOpen, initialPrendaIds, styleOptions]); // Ensure all relevant dependencies are here
+  }, [isOpen, initialData, initialPrendaIds, reset, availablePrendas, styleOptions]);
 
-  const handleFormSubmit = async (data: LookFormData) => {
+  const handleFormSubmitWithState = async (data: LookFormData) => {
     setIsSubmitting(true);
     const result = await onSubmit(data, initialData?.id);
     setIsSubmitting(false);
@@ -98,7 +121,7 @@ export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availabl
     if (result.error) {
       if (result.validationErrors) {
         result.validationErrors.forEach(err => {
-          // @ts-ignore - path might be complex but Zod provides it as an array
+          // @ts-ignore
           form.setError(err.path[0] as keyof LookFormData, { message: err.message });
         });
       }
@@ -110,9 +133,8 @@ export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availabl
     } else {
       toast({
         title: 'Éxito',
-        description: `Look ${initialData ? 'actualizado' : 'creado'} correctamente.`,
-      });
-      onOpenChange(false); // Close dialog on success
+        description: `Look ${initialData ? 'actualizado' : 'creado'} correctamente.`});
+      onOpenChange(false);
     }
   };
 
@@ -125,26 +147,26 @@ export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availabl
             {initialData ? 'Modifica los detalles de tu look.' : 'Combina tus prendas para crear un nuevo look.'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(handleFormSubmit)}>
+        <form onSubmit={handleSubmit(handleFormSubmitWithState)}>
           <ScrollArea className="max-h-[70vh] p-1 pr-3">
             <div className="grid gap-5 py-4">
               <div>
                 <Label htmlFor="nombre" className="font-medium">Nombre del Look</Label>
-                <Input id="nombre" {...form.register('nombre')} className="mt-1" placeholder="Ej: Casual de Fin de Semana"/>
-                {form.formState.errors.nombre && <p className="text-sm text-destructive mt-1">{form.formState.errors.nombre.message}</p>}
+                <Input id="nombre" {...register('nombre')} className="mt-1" placeholder="Ej: Casual de Fin de Semana"/>
+                {errors.nombre && <p className="text-sm text-destructive mt-1">{errors.nombre.message}</p>}
               </div>
 
               <div>
                 <Label htmlFor="descripcion" className="font-medium">Descripción (Opcional)</Label>
-                <Textarea id="descripcion" {...form.register('descripcion')} className="mt-1" placeholder="Perfecto para..."/>
-                {form.formState.errors.descripcion && <p className="text-sm text-destructive mt-1">{form.formState.errors.descripcion.message}</p>}
+                <Textarea id="descripcion" {...register('descripcion')} className="mt-1" placeholder="Perfecto para..."/>
+                {errors.descripcion && <p className="text-sm text-destructive mt-1">{errors.descripcion.message}</p>}
               </div>
 
               <div>
                 <Label htmlFor="estilo" className="font-medium">Estilo</Label>
                 <Controller
                   name="estilo"
-                  control={form.control}
+                  control={control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                       <SelectTrigger id="estilo" className="mt-1">
@@ -158,18 +180,18 @@ export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availabl
                     </Select>
                   )}
                 />
-                {form.formState.errors.estilo && <p className="text-sm text-destructive mt-1">{form.formState.errors.estilo.message}</p>}
+                {errors.estilo && <p className="text-sm text-destructive mt-1">{errors.estilo.message}</p>}
               </div>
               
               <div>
                 <Label htmlFor="prendas" className="font-medium">Prendas Incluidas</Label>
                  <Controller
                   name="prenda_ids"
-                  control={form.control}
+                  control={control}
                   render={({ field }) => (
                     <MultiSelectCommand
                       options={prendaOptions}
-                      selectedValues={field.value ? field.value.map(String) : []} // Ensure field.value is not undefined
+                      selectedValues={field.value ? field.value.map(String) : []}
                       onSelectedValuesChange={(newValues) => field.onChange(newValues.map(Number))}
                       placeholder="Selecciona prendas..."
                       searchPlaceholder="Buscar prendas..."
@@ -178,16 +200,16 @@ export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availabl
                     />
                   )}
                 />
-                {form.formState.errors.prenda_ids && <p className="text-sm text-destructive mt-1">{form.formState.errors.prenda_ids.message}</p>}
+                {errors.prenda_ids && <p className="text-sm text-destructive mt-1">{errors.prenda_ids.message}</p>}
               </div>
 
               <div>
                 <Label htmlFor="imagen_url" className="font-medium">URL de Imagen (Opcional)</Label>
                  <div className="flex items-center gap-2 mt-1">
                     <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                    <Input id="imagen_url" {...form.register('imagen_url')} placeholder="https://ejemplo.com/imagen.png"/>
+                    <Input id="imagen_url" {...register('imagen_url')} placeholder="https://ejemplo.com/imagen.png"/>
                  </div>
-                {form.formState.errors.imagen_url && <p className="text-sm text-destructive mt-1">{form.formState.errors.imagen_url.message}</p>}
+                {errors.imagen_url && <p className="text-sm text-destructive mt-1">{errors.imagen_url.message}</p>}
               </div>
             </div>
           </ScrollArea>
