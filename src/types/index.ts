@@ -20,7 +20,7 @@ export interface StyleOption {
 }
 
 export interface OutfitItem {
-  id: string; // Was number, changed to string to align with getAISuggestionAction
+  id: string;
   name: string;
   imageUrl: string;
   category: string;
@@ -39,19 +39,19 @@ export const TIPO_PRENDA_ENUM_VALUES = ['Cuerpo', 'Piernas', 'Zapatos', 'Abrigos
 export type TipoPrenda = typeof TIPO_PRENDA_ENUM_VALUES[number];
 
 export interface Prenda {
-  id: number; // Changed from UUID to SERIAL (number)
+  id: number;
   created_at: string;
   nombre: string;
   tipo: TipoPrenda;
   color: PrendaColor;
-  modelo: string; // Changed from talla
+  modelo: string;
   temporada: string;
-  fechacompra: string; // Changed from ocasion, should be YYYY-MM-DD
+  fechacompra: string; // YYYY-MM-DD
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
   estilo: string;
-  is_archived: boolean; // Added for /archivo page
+  is_archived: boolean;
 }
 
 export const SEASONS = ['Verano', 'Invierno', 'Otoño', 'Primavera', 'Todo el Año'] as const;
@@ -60,7 +60,7 @@ export type TemporadaPrenda = typeof SEASONS[number];
 export type EstiloPrenda = StyleOption['id'];
 
 
-// --- Looks Page Types ---\
+// --- Looks Page Types ---
 export interface Look {
   id: number;
   created_at: string;
@@ -114,7 +114,7 @@ export interface CalendarAssignmentFormData {
 }
 
 
-// --- Wishlist Page Types ---\
+// --- Wishlist Page Types ---
 export interface WishlistItem {
   id: string;
   name: string;
@@ -176,12 +176,11 @@ export interface HistoricalSuggestion {
 // --- Optimized Outfit Suggester Types ---
 export interface OptimizedOutfitParams {
   temperature: number;
-  season: TemporadaPrenda;
+  ocasion: string; // Changed from season: TemporadaPrenda
 }
 
 export const NEUTRAL_COLORS: PrendaColor[] = ['Negro', 'Blanco', 'Gris', 'Beige'];
 export const DIFFICULT_COLOR_PAIRS: [PrendaColor, PrendaColor][] = [
   ['Marrón', 'Negro'],
   ['Rojo', 'Rosa'],
-  // Add more pairs if needed, e.g., ['Verde', 'Naranja'] if you consider it difficult
 ];

@@ -9,15 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, AlertTriangle, Sparkles } from 'lucide-react';
-import type { SuggestedOutfit, OptimizedOutfitParams, TemporadaPrenda } from '@/types';
-import { SEASONS } from '@/types';
+import type { SuggestedOutfit, OptimizedOutfitParams } from '@/types';
+import { styleOptions } from '@/components/StyleSelection'; // Using styleOptions for Occasion
 import { generateOptimizedOutfitSuggestionAction } from '@/app/actions';
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { useToast } from '@/hooks/use-toast';
+import { OutfitExplanation } from '@/components/OutfitExplanation';
 
 export function OptimizedOutfitSuggester() {
   const [temperature, setTemperature] = React.useState<number | undefined>(20);
-  const [season, setSeason] = React.useState<TemporadaPrenda>(SEASONS[0]); // Default to 'Verano'
+  const [ocasion, setOcasion] = React.useState<string>(styleOptions[0].id); // Default to the first style as occasion
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [suggestedOutfit, setSuggestedOutfit] = React.useState<SuggestedOutfit | null>(null);
@@ -28,8 +29,8 @@ export function OptimizedOutfitSuggester() {
       toast({ title: "Error de Validación", description: "Por favor, ingresa una temperatura.", variant: "destructive" });
       return;
     }
-    if (!season) {
-      toast({ title: "Error de Validación", description: "Por favor, selecciona una estación.", variant: "destructive" });
+    if (!ocasion) {
+      toast({ title: "Error de Validación", description: "Por favor, selecciona una ocasión.", variant: "destructive" });
       return;
     }
 
@@ -37,7 +38,7 @@ export function OptimizedOutfitSuggester() {
     setError(null);
     setSuggestedOutfit(null);
 
-    const params: OptimizedOutfitParams = { temperature, season };
+    const params: OptimizedOutfitParams = { temperature, ocasion };
     const result = await generateOptimizedOutfitSuggestionAction(params);
 
     if (result.error) {
@@ -57,7 +58,7 @@ export function OptimizedOutfitSuggester() {
           Sugerencia de Atuendo Optimizado
         </CardTitle>
         <CardDescription>
-          Genera un conjunto completo de tu armario basado en la temperatura y estación, con armonía de colores.
+          Genera un conjunto completo de tu armario basado en la temperatura y ocasión, con armonía de colores.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -73,14 +74,14 @@ export function OptimizedOutfitSuggester() {
             />
           </div>
           <div>
-            <Label htmlFor="opt-season">Estación del Año</Label>
-            <Select value={season} onValueChange={(value) => setSeason(value as TemporadaPrenda)}>
-              <SelectTrigger id="opt-season">
-                <SelectValue placeholder="Selecciona una estación" />
+            <Label htmlFor="opt-ocasion">Ocasión</Label>
+            <Select value={ocasion} onValueChange={(value) => setOcasion(value)}>
+              <SelectTrigger id="opt-ocasion">
+                <SelectValue placeholder="Selecciona una ocasión" />
               </SelectTrigger>
               <SelectContent>
-                {SEASONS.map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                {styleOptions.map(opt => ( // Using styleOptions for Occasion
+                  <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -89,7 +90,7 @@ export function OptimizedOutfitSuggester() {
 
         <Button
           onClick={handleGetSuggestion}
-          disabled={isLoading || temperature === undefined}
+          disabled={isLoading || temperature === undefined || !ocasion}
           className="w-full py-3 text-lg font-semibold"
           size="lg"
         >
@@ -108,9 +109,12 @@ export function OptimizedOutfitSuggester() {
         )}
 
         {suggestedOutfit && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-4 text-center">Atuendo Sugerido:</h3>
+          <div className="mt-6 space-y-4">
+            <h3 className="text-lg font-semibold mb-2 text-center text-foreground">Tu Atuendo Sugerido:</h3>
             <OutfitSuggestion suggestion={suggestedOutfit} />
+            {suggestedOutfit.explanation && (
+              <OutfitExplanation explanation={suggestedOutfit.explanation} />
+            )}
           </div>
         )}
       </CardContent>

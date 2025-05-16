@@ -108,7 +108,7 @@ const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { required_error: "Por favor selecciona un tipo válido."}),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, "El modelo es requerido."), // Was talla
+  modelo: z.string().min(1, "El modelo es requerido."),
   temporada: z.enum(SEASONS, {required_error: "Por favor selecciona una temporada válida."}),
   fechacompra: z.string().refine((val) => { 
     if (val === '' || val === null || val === undefined) return true; 
@@ -116,7 +116,7 @@ const PrendaFormSchema = z.object({
     return isValid(parsedDate);
   }, {
     message: "La fecha de compra debe ser válida (YYYY-MM-DD) o estar vacía.",
-  }).optional().nullable(), // Was ocasion
+  }).optional().nullable(),
   imagen_url: z.string().url("Debe ser una URL válida.").or(z.literal("")).optional(),
   temperatura_min: z.coerce.number().optional().nullable(),
   temperatura_max: z.coerce.number().optional().nullable(),
@@ -146,9 +146,9 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     nombre,
     tipo,
     color,
-    modelo, // DB column is modelo (was talla)
+    modelo,
     temporada,
-    fechacompra: fechacompra || null, // DB column is fechacompra (was ocasion)
+    fechacompra: fechacompra || null,
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -220,9 +220,9 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     nombre,
     tipo,
     color,
-    modelo, // DB column is modelo (was talla)
+    modelo,
     temporada,
-    fechacompra: fechacompra || null, // DB column is fechacompra (was ocasion)
+    fechacompra: fechacompra || null,
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -252,7 +252,6 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
   }
 }
 
-// ... (deletePrendaAction, Look Actions, Calendar Actions, Statistics Actions remain largely the same but should use the updated mapDbPrendaToClient where applicable)
 export async function deletePrendaAction(itemId: number): Promise<{ success?: boolean; error?: string }> {
   if (!supabase) {
     console.error("Supabase client is not initialized in deletePrendaAction. Check environment variables.");
@@ -260,14 +259,12 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
   }
 
   try {
-    // Before deleting a prenda, delete related entries in look_prendas
     const { error: lookPrendasError } = await supabase
       .from('look_prendas')
       .delete()
       .eq('prenda_id', itemId);
 
     if (lookPrendasError) {
-      // Log the error but attempt to continue deleting the prenda itself
       console.error('Error deleting related look_prendas entries:', lookPrendasError);
     }
     
@@ -316,7 +313,7 @@ export async function getLooksAction(): Promise<{ data?: Look[]; error?: string 
 
     const formattedLooks: Look[] = looksData.map(look => ({
       ...look,
-      prendas: look.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[] // Ensure no nulls
+      prendas: look.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[]
     }));
 
     return { data: formattedLooks };
@@ -485,8 +482,6 @@ export async function deleteLookAction(lookId: number): Promise<{ success?: bool
     return { error: "Error de conexión con la base de datos. Por favor, inténtalo más tarde." };
   }
   try {
-    // Deleting from 'look_prendas' first due to foreign key constraints,
-    // or ensure ON DELETE CASCADE is set up correctly on the foreign key in 'look_prendas' referencing 'looks.id'
     const { error: lookPrendasError } = await supabase
         .from('look_prendas')
         .delete()
@@ -494,8 +489,6 @@ export async function deleteLookAction(lookId: number): Promise<{ success?: bool
 
     if (lookPrendasError) {
         console.error('Error deleting related look_prendas entries:', lookPrendasError);
-        // Decide if you want to throw this error or attempt to delete the look anyway
-        // For now, let's throw to be safe and indicate a potential DB integrity issue
         throw lookPrendasError; 
     }
     
@@ -565,9 +558,8 @@ export async function getCalendarAssignmentsAction(
           prenda_id: null,
         } as LookCalendarAssignment;
       }
-      // console.warn("Found assignment without valid prenda or look reference:", assignment.id)
-      return null; // Return null for invalid assignments
-    }).filter(Boolean) as CalendarAssignment[];  // Filter out nulls
+      return null; 
+    }).filter(Boolean) as CalendarAssignment[]; 
     return { data: formattedAssignments };
   } catch (error) {
     console.error('Error fetching calendar assignments:', error);
@@ -802,7 +794,7 @@ const PRENDA_COLOR_MAP_FULL: Record<string, string> = {
   'Verde': 'hsl(142, 71%, 45%)',
   'Amarillo': 'hsl(48, 96%, 53%)',
   'Negro': 'hsl(0, 0%, 10%)',
-  'Blanco': 'hsl(0, 0%, 100%)', // Pure white for better visibility on colored backgrounds
+  'Blanco': 'hsl(0, 0%, 100%)', 
   'Gris': 'hsl(215, 14%, 65%)',
   'Marrón': 'hsl(30, 47%, 40%)',
   'Naranja': 'hsl(25, 95%, 53%)',
@@ -842,7 +834,7 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
       .from('prendas')
       .select('color')
       .eq('is_archived', false)
-      .not('color', 'is', null); // Ensure color column is not null
+      .not('color', 'is', null);
 
     if (dbError) {
       console.error("[STATS_ERROR] Supabase error fetching prendas for color distribution:", JSON.stringify(dbError, null, 2));
@@ -851,17 +843,14 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
 
     if (!prendasData || prendasData.length === 0) {
       console.log("[STATS_INFO] No active prendas with colors found for color distribution.");
-      return { data: [] }; // Return empty data, not an error
+      return { data: [] };
     }
 
     const colorCounts: Record<string, number> = {};
     prendasData.forEach(p => {
-      if (p.color && PRENDA_COLORS.includes(p.color as PrendaColor)) { // Validate against ENUM
+      if (p.color && PRENDA_COLORS.includes(p.color as PrendaColor)) {
         colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
       } else if (p.color) {
-        // Optionally log unexpected colors if they aren't in PRENDA_COLORS
-        // console.warn(`[STATS_WARN] Unexpected color value from DB not in PRENDA_COLORS: ${p.color}`);
-        // For now, we'll count them under 'Otro' if 'Otro' is a valid ENUM value
         if (PRENDA_COLORS.includes('Otro')) {
            colorCounts['Otro'] = (colorCounts['Otro'] || 0) + 1;
         }
@@ -872,7 +861,7 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
     let fallbackIndex = 0;
 
     const colorFrequencyData: ColorFrequency[] = Object.entries(colorCounts)
-      .filter(([, count]) => count > 0) // Ensure we only process colors with a count > 0
+      .filter(([, count]) => count > 0) 
       .map(([color, count]) => {
         let fill = PRENDA_COLOR_MAP_FULL[color as keyof typeof PRENDA_COLOR_MAP_FULL];
         if (!fill) { 
@@ -983,10 +972,8 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
             activityData[monthKey]++;
             }
         } else {
-            // console.warn(`[STATS_WARN] Invalid date found in calendar assignment: ${assignment.fecha}`);
         }
       } catch(e) {
-        //   console.warn(`[STATS_WARN] Error parsing date ${assignment.fecha} in calendar assignment:`, e);
       }
     });
 
@@ -1052,40 +1039,35 @@ export async function generateOptimizedOutfitSuggestionAction(
   }
 
   try {
-    const { temperature, season } = params;
+    const { temperature, ocasion } = params; // Changed from season to ocasion
 
     const { data: allDbPrendas, error: prendasError } = await supabase
       .from('prendas')
       .select('*')
-      .eq('is_archived', false);
+      .eq('is_archived', false)
+      .eq('estilo', ocasion); // Filter by 'estilo' column using the 'ocasion' input
 
     if (prendasError) {
       console.error("Error fetching prendas for optimized suggestion:", prendasError);
-      return { error: `Error al obtener prendas: ${prendasError.message}` };
+      return { error: `Error al obtener prendas para la ocasión '${ocasion}': ${prendasError.message}` };
     }
     if (!allDbPrendas || allDbPrendas.length === 0) {
-      return { error: "Tu armario está vacío o no tiene prendas activas." };
+      return { error: `Tu armario no tiene prendas activas para la ocasión '${ocasion}'.` };
     }
 
     const allPrendas: Prenda[] = allDbPrendas.map(mapDbPrendaToClient);
 
-    // 1. Filter by season and temperature
     const suitablePrendas = allPrendas.filter(p =>
-      (p.temporada === season || p.temporada === 'Todo el Año') &&
       (p.temperatura_min === null || p.temperatura_min <= temperature) &&
       (p.temperatura_max === null || p.temperatura_max >= temperature)
     );
 
-    if (suitablePrendas.length < 3) { // Need at least Cuerpo, Piernas, Zapatos
-      return { error: "No hay suficientes prendas adecuadas para la temperatura y estación seleccionadas." };
+    if (suitablePrendas.length < 2) { // Need at least Cuerpo, Piernas. Zapatos can be more flexible.
+      return { error: `No hay suficientes prendas adecuadas para la temperatura de ${temperature}°C y la ocasión '${ocasion}'.` };
     }
 
     const prendasPorTipo: Record<TipoPrenda, Prenda[]> = {
-      'Cuerpo': [],
-      'Piernas': [],
-      'Zapatos': [],
-      'Abrigos': [],
-      'Accesorios': [], // Not used yet but for completeness
+      'Cuerpo': [], 'Piernas': [], 'Zapatos': [], 'Abrigos': [], 'Accesorios': [],
     };
 
     suitablePrendas.forEach(p => {
@@ -1095,42 +1077,30 @@ export async function generateOptimizedOutfitSuggestionAction(
     });
 
     if (prendasPorTipo['Cuerpo'].length === 0 || prendasPorTipo['Piernas'].length === 0 || prendasPorTipo['Zapatos'].length === 0) {
-      return { error: "Faltan prendas en categorías esenciales (Cuerpo, Piernas, Zapatos) para las condiciones dadas." };
+      return { error: `Faltan prendas en categorías esenciales (Cuerpo, Piernas, Zapatos) para la ocasión '${ocasion}' y temperatura ${temperature}°C.` };
     }
 
     const MAX_ATTEMPTS = 20;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const outfitCandidate: Prenda[] = [];
 
-      // Select Cuerpo
-      if (prendasPorTipo['Cuerpo'].length > 0) {
-        outfitCandidate.push(shuffleArray(prendasPorTipo['Cuerpo'])[0]);
-      } else continue; // Not enough items for essential category
-
-      // Select Piernas
-      if (prendasPorTipo['Piernas'].length > 0) {
-        outfitCandidate.push(shuffleArray(prendasPorTipo['Piernas'])[0]);
-      } else continue;
-
-      // Select Zapatos
-      if (prendasPorTipo['Zapatos'].length > 0) {
-        outfitCandidate.push(shuffleArray(prendasPorTipo['Zapatos'])[0]);
-      } else continue;
+      if (prendasPorTipo['Cuerpo'].length > 0) outfitCandidate.push(shuffleArray(prendasPorTipo['Cuerpo'])[0]); else continue;
+      if (prendasPorTipo['Piernas'].length > 0) outfitCandidate.push(shuffleArray(prendasPorTipo['Piernas'])[0]); else continue;
+      if (prendasPorTipo['Zapatos'].length > 0) outfitCandidate.push(shuffleArray(prendasPorTipo['Zapatos'])[0]); else continue;
       
-      // Coat Logic
       if (temperature <= 22 && prendasPorTipo['Abrigos'].length > 0) {
         outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
-      } else if (temperature > 22 && prendasPorTipo['Abrigos'].length > 0 && Math.random() < 0.3) { // Optional coat for warmer weather
-        // For formal/night occasions, this logic could be more specific if 'ocasion' was part of input
-         outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
+      } else if (temperature > 22 && prendasPorTipo['Abrigos'].length > 0 && Math.random() < 0.2) { // Less chance for coat in warmer weather unless implied by occasion
+         if (ocasion.toLowerCase() === 'formal' || ocasion.toLowerCase() === 'trabajo') { // Example: formal/work might still suggest a light coat
+            outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
+         }
       }
 
-      // Color Harmony Validation
       const currentColors = outfitCandidate.map(p => p.color);
-      const distinctNonNeutralColors = currentColors.filter(c => !NEUTRAL_COLORS.includes(c));
+      const distinctNonNeutralColors = currentColors.filter(c => !NEUTRAL_COLORS.includes(c as PrendaColor));
       const uniqueNonNeutralColors = new Set(distinctNonNeutralColors);
 
-      if (uniqueNonNeutralColors.size > 3) continue; // Too many non-neutral colors
+      if (uniqueNonNeutralColors.size > 3) continue;
 
       let hasDifficultPair = false;
       for (const pair of DIFFICULT_COLOR_PAIRS) {
@@ -1141,7 +1111,6 @@ export async function generateOptimizedOutfitSuggestionAction(
       }
       if (hasDifficultPair) continue;
       
-      // If we reach here, the outfit is valid
       const outfitItems: OutfitItem[] = outfitCandidate.map(p => ({
         id: p.id.toString(),
         name: p.nombre,
@@ -1151,16 +1120,21 @@ export async function generateOptimizedOutfitSuggestionAction(
         aiHint: `${p.tipo.toLowerCase()} ${p.color.toLowerCase()}`.trim().substring(0,50) || p.nombre.toLowerCase(),
       }));
       
-      // Generate explanation (could use another AI flow here or a simpler template)
-      let explanation = `Sugerencia para ${temperature}°C en ${season}:\n`;
-      explanation += outfitItems.map(item => `${item.category}: ${item.name} (${item.color})`).join('\n');
-      if (!outfitItems.some(item => item.category === 'Abrigos')) {
-        explanation += "\nNo se sugiere abrigo debido a la temperatura.";
-      }
+      const outfitDescription = outfitItems.map(item => `${item.name} (${item.color})`).join(', ');
+      const temperatureRangeString = `${temperature}°C`; // Single temperature
+      const aiInput: GenerateOutfitExplanationInput = {
+        temperatureRange: temperatureRangeString,
+        selectedStyle: ocasion, // Pass 'ocasion' as 'selectedStyle' to the explanation flow
+        outfitDescription: outfitDescription,
+        userClosetInformationNeeded: true, // Assuming we want closet info for this detailed suggestion
+        ocasion: ocasion, // Pass a_ocasion also to the 'ocasion' field of the explanation flow
+      };
+
+      const aiExplanation = await generateOutfitExplanation(aiInput);
 
       return {
         items: outfitItems,
-        explanation,
+        explanation: aiExplanation.explanation,
       };
     }
 
