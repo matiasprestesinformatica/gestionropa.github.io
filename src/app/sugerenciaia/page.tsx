@@ -5,8 +5,6 @@ import * as React from 'react';
 import { Navbar } from '@/components/ui/Navbar';
 import { TemperatureControl } from '@/components/TemperatureControl';
 import { StyleSelection } from '@/components/StyleSelection';
-// OutfitSuggestion is now used within InteractiveOutfitSuggestion
-// import { OutfitSuggestion } from '@/components/OutfitSuggestion'; 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -20,7 +18,7 @@ import { OutfitExplanation } from '@/components/OutfitExplanation';
 import { SuggestionHistory } from '@/components/SuggestionHistory';
 import { InspirationCard } from '@/components/InspirationCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { InteractiveOutfitSuggestion } from '@/components/dashboard/InteractiveOutfitSuggestion';
+import { SeleccionarSugerenciaIA } from '@/components/dashboard/seleccionarsugerenciaia'; // Updated import name
 
 
 const LOCAL_STORAGE_HISTORY_KEY = 'estilosia_suggestion_history';
@@ -36,7 +34,7 @@ export default function SugerenciaAIPage() {
   
   const [suggestionHistory, setSuggestionHistory] = React.useState<HistoricalSuggestion[]>([]);
   const [userNotes, setUserNotes] = React.useState<string>('');
-  const [availablePrendasForLookForm, setAvailablePrendasForLookForm] = React.useState<Prenda[]>([]);
+  const [availablePrendas, setAvailablePrendas] = React.useState<Prenda[]>([]);
 
   const { toast } = useToast();
 
@@ -55,13 +53,12 @@ export default function SugerenciaAIPage() {
       setUserNotes(storedNotes);
     }
     
-    // Fetch all available prendas once for the LookForm
     const fetchAllPrendas = async () => {
         const prendasResult = await getPrendasAction();
         if (prendasResult.data) {
-            setAvailablePrendasForLookForm(prendasResult.data.filter(p => !p.is_archived));
+            setAvailablePrendas(prendasResult.data.filter(p => !p.is_archived));
         } else if (prendasResult.error) {
-            toast({ title: "Error al cargar prendas", description: "No se pudieron cargar las prendas para crear looks.", variant: "destructive"});
+            toast({ title: "Error al cargar prendas", description: "No se pudieron cargar las prendas para crear looks o cambiar sugerencias.", variant: "destructive"});
         }
     };
     fetchAllPrendas();
@@ -102,7 +99,7 @@ export default function SugerenciaAIPage() {
 
     setIsLoading(true);
     setError(null);
-    setSuggestion(null); // Clear previous suggestion
+    setSuggestion(null);
     
     const result = await getAISuggestionAction({
       temperature,
@@ -198,12 +195,12 @@ export default function SugerenciaAIPage() {
               </div>
             )}
 
-            {suggestion && (
-              <InteractiveOutfitSuggestion 
+            {suggestion && selectedStyle && (
+              <SeleccionarSugerenciaIA 
                 initialSuggestion={suggestion}
                 originalTemperature={temperature}
-                originalStyleId={selectedStyle || 'casual'} // Default to 'casual' if somehow null
-                availablePrendasForLookForm={availablePrendasForLookForm}
+                originalStyleId={selectedStyle}
+                availablePrendas={availablePrendas}
               />
             )}
             
