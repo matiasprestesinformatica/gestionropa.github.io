@@ -1,4 +1,3 @@
-
 // src/app/page.tsx (New Homepage - now the Dashboard)
 'use client';
 
@@ -14,7 +13,7 @@ import type { SuggestedOutfit, StatisticsSummary, ColorFrequency, Prenda } from 
 import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction, getPrendasAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
 import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester';
-import { SeleccionarSugerencias } from '@/components/suggestion/SeleccionarSugerencias';
+import { SeleccionarSugerencias } from '@/components/suggestion/SeleccionarSugerencias'; // Updated import path
 
 
 const mockStatsSummary: StatisticsSummary = {
@@ -229,7 +228,7 @@ export default function HomePage() {
         </div>
         
         <div className="grid grid-cols-1 gap-8">
-           <OptimizedOutfitSuggester availablePrendasForLookForm={availablePrendas} />
+           <OptimizedOutfitSuggester />
         </div>
 
       </main>
@@ -237,5 +236,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

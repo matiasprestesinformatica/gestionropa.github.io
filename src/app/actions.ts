@@ -2,7 +2,12 @@
 'use server';
 
 import { generateOutfitExplanation, type GenerateOutfitExplanationInput } from '@/ai/flows/generate-outfit-explanation';
-import type { SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, TipoPrenda, PrendaColor, OptimizedOutfitParams, TemporadaPrenda } from '@/types';
+import type { 
+  SuggestedOutfit, OutfitItem, Prenda, Look, LookFormData, 
+  CalendarAssignment, CalendarAssignmentFormData, PrendaCalendarAssignment, LookCalendarAssignment, 
+  StatisticsSummary, ColorFrequency, StyleUsageStat, TimeActivityStat, IntelligentInsightData, 
+  TipoPrenda, PrendaColor, OptimizedOutfitParams, TemporadaPrenda, GetAlternativePrendasParams
+} from '@/types';
 import { PRENDA_COLORS, TIPO_PRENDA_ENUM_VALUES, SEASONS, NEUTRAL_COLORS, DIFFICULT_COLOR_PAIRS } from '@/types';
 import { supabase } from '@/lib/supabaseClient';
 import { revalidatePath } from 'next/cache';
@@ -108,10 +113,10 @@ const PrendaFormSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido."),
   tipo: z.enum(TIPO_PRENDA_ENUM_VALUES, { required_error: "Por favor selecciona un tipo válido."}),
   color: z.enum(PRENDA_COLORS, { errorMap: () => ({ message: "Por favor selecciona un color válido." }) }),
-  modelo: z.string().min(1, "El modelo es requerido."),
+  modelo: z.string().min(1, "El modelo es requerido."), // Was talla
   temporada: z.enum(SEASONS, {required_error: "Por favor selecciona una temporada válida."}),
-  fechacompra: z.string().refine((val) => { 
-    if (val === '' || val === null || val === undefined) return true; 
+  fechacompra: z.string().refine((val) => { // Was ocasion
+    if (val === '' || val === null || val === undefined) return true; // Optional
     const parsedDate = parseISO(val);
     return isValid(parsedDate);
   }, {
@@ -146,9 +151,9 @@ export async function addPrendaAction(formData: FormData): Promise<{ data?: Pren
     nombre,
     tipo,
     color,
-    modelo,
+    modelo, // DB column is 'modelo' (formerly 'talla')
     temporada,
-    fechacompra: fechacompra || null,
+    fechacompra, // DB column is 'fechacompra' (formerly 'ocasion')
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -220,9 +225,9 @@ export async function updatePrendaAction(itemId: number, formData: FormData): Pr
     nombre,
     tipo,
     color,
-    modelo,
+    modelo, // DB column is 'modelo'
     temporada,
-    fechacompra: fechacompra || null,
+    fechacompra, // DB column is 'fechacompra'
     imagen_url: imagen_url || `https://placehold.co/200x300.png?text=${encodeURIComponent(nombre)}`,
     temperatura_min,
     temperatura_max,
@@ -259,13 +264,15 @@ export async function deletePrendaAction(itemId: number): Promise<{ success?: bo
   }
 
   try {
+    // Delete related entries in look_prendas first if a prenda is part of any look
     const { error: lookPrendasError } = await supabase
       .from('look_prendas')
       .delete()
       .eq('prenda_id', itemId);
 
     if (lookPrendasError) {
-      console.error('Error deleting related look_prendas entries:', lookPrendasError);
+      // Log the error but proceed to delete the prenda itself, as the user might want to delete it anyway
+      console.error('Error deleting related look_prendas entries, but proceeding with prenda deletion:', lookPrendasError);
     }
     
     const { error } = await supabase
@@ -300,10 +307,17 @@ export async function getLooksAction(): Promise<{ data?: Look[]; error?: string 
     const { data: looksData, error: looksError } = await supabase
       .from('looks')
       .select(`
-        *,
+        id,
+        created_at,
+        nombre,
+        descripcion,
+        estilo,
+        imagen_url,
         look_prendas (
           prenda_id,
-          prendas (*)
+          prendas (
+            id, created_at, nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo, is_archived
+          )
         )
       `)
       .order('created_at', { ascending: false });
@@ -312,7 +326,12 @@ export async function getLooksAction(): Promise<{ data?: Look[]; error?: string 
     if (!looksData) return { data: [] };
 
     const formattedLooks: Look[] = looksData.map(look => ({
-      ...look,
+      id: look.id,
+      created_at: look.created_at,
+      nombre: look.nombre,
+      descripcion: look.descripcion,
+      estilo: look.estilo,
+      imagen_url: look.imagen_url,
       prendas: look.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[]
     }));
 
@@ -333,10 +352,17 @@ export async function getLookByIdAction(lookId: number): Promise<{ data?: Look; 
     const { data: lookData, error: lookError } = await supabase
       .from('looks')
       .select(`
-        *,
+        id,
+        created_at,
+        nombre,
+        descripcion,
+        estilo,
+        imagen_url,
         look_prendas (
           prenda_id,
-          prendas (*)
+          prendas (
+            id, created_at, nombre, tipo, color, modelo, temporada, fechacompra, imagen_url, temperatura_min, temperatura_max, estilo, is_archived
+          )
         )
       `)
       .eq('id', lookId)
@@ -346,7 +372,12 @@ export async function getLookByIdAction(lookId: number): Promise<{ data?: Look; 
     if (!lookData) return { error: "Look no encontrado." };
 
     const formattedLook: Look = {
-        ...lookData,
+        id: lookData.id,
+        created_at: lookData.created_at,
+        nombre: lookData.nombre,
+        descripcion: lookData.descripcion,
+        estilo: lookData.estilo,
+        imagen_url: lookData.imagen_url,
         prendas: lookData.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[]
     };
     return { data: formattedLook };
@@ -378,7 +409,7 @@ export async function addLookAction(formData: LookFormData): Promise<{ data?: Lo
         estilo: formData.estilo,
         imagen_url: formData.imagen_url,
       }])
-      .select()
+      .select('id, created_at, nombre, descripcion, estilo, imagen_url') // Select only look fields
       .single();
 
     if (lookError) throw lookError;
@@ -401,6 +432,7 @@ export async function addLookAction(formData: LookFormData): Promise<{ data?: Lo
     revalidatePath('/statistics');
 
 
+    // Fetch the full look data with prendas
     const newLookResult = await getLookByIdAction(lookId);
     if (newLookResult.error || !newLookResult.data) {
         return { error: newLookResult.error || "Look creado, pero no se pudo obtener con detalles." };
@@ -434,12 +466,13 @@ export async function updateLookAction(lookId: number, formData: LookFormData): 
         imagen_url: formData.imagen_url,
       })
       .eq('id', lookId)
-      .select()
+      .select('id, created_at, nombre, descripcion, estilo, imagen_url') // Select only look fields
       .single();
 
     if (lookError) throw lookError;
     if (!updatedLookData) throw new Error("Falló la actualización del look.");
 
+    // Delete existing associations
     const { error: deleteError } = await supabase
       .from('look_prendas')
       .delete()
@@ -447,6 +480,7 @@ export async function updateLookAction(lookId: number, formData: LookFormData): 
 
     if (deleteError) throw deleteError;
 
+    // Insert new associations
     const lookPrendasToInsert = formData.prenda_ids.map(prenda_id => ({
       look_id: lookId,
       prenda_id: prenda_id,
@@ -459,10 +493,11 @@ export async function updateLookAction(lookId: number, formData: LookFormData): 
     if (insertError) throw insertError;
 
     revalidatePath('/looks');
-    revalidatePath(`/looks/${lookId}`);
+    revalidatePath(`/looks/${lookId}`); // Assuming a detail page might exist
     revalidatePath('/statistics');
 
 
+    // Fetch the full look data with prendas
     const finalLookResult = await getLookByIdAction(lookId);
     if (finalLookResult.error || !finalLookResult.data) {
         return { error: finalLookResult.error || "Look actualizado, pero no se pudo obtener con detalles." };
@@ -482,15 +517,14 @@ export async function deleteLookAction(lookId: number): Promise<{ success?: bool
     return { error: "Error de conexión con la base de datos. Por favor, inténtalo más tarde." };
   }
   try {
-    const { error: lookPrendasError } = await supabase
-        .from('look_prendas')
-        .delete()
-        .eq('look_id', lookId);
-
-    if (lookPrendasError) {
-        console.error('Error deleting related look_prendas entries:', lookPrendasError);
-        throw lookPrendasError; 
-    }
+    // Deleting from 'look_prendas' will happen automatically due to ON DELETE CASCADE
+    // if the foreign key constraint was set up that way.
+    // If not, delete them manually first:
+    // const { error: lookPrendasError } = await supabase
+    //     .from('look_prendas')
+    //     .delete()
+    //     .eq('look_id', lookId);
+    // if (lookPrendasError) throw lookPrendasError;
     
     const { error } = await supabase
       .from('looks')
@@ -541,7 +575,7 @@ export async function getCalendarAssignmentsAction(
       if (assignment.tipo_asignacion === 'prenda' && assignment.prendas) {
         return {
           ...assignment,
-          fecha: assignment.fecha,
+          fecha: assignment.fecha, // ensure fecha is passed as string
           prenda: mapDbPrendaToClient(assignment.prendas),
           look: null,
           look_id: null,
@@ -549,7 +583,7 @@ export async function getCalendarAssignmentsAction(
       } else if (assignment.tipo_asignacion === 'look' && assignment.looks) {
         return {
           ...assignment,
-          fecha: assignment.fecha,
+          fecha: assignment.fecha, // ensure fecha is passed as string
           look: {
             ...assignment.looks,
             prendas: assignment.looks.look_prendas.map((lp: any) => mapDbPrendaToClient(lp.prendas)).filter(Boolean) as Prenda[],
@@ -834,7 +868,7 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
       .from('prendas')
       .select('color')
       .eq('is_archived', false)
-      .not('color', 'is', null);
+      .not('color', 'is', null); // Ensures color is not null
 
     if (dbError) {
       console.error("[STATS_ERROR] Supabase error fetching prendas for color distribution:", JSON.stringify(dbError, null, 2));
@@ -843,25 +877,27 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
 
     if (!prendasData || prendasData.length === 0) {
       console.log("[STATS_INFO] No active prendas with colors found for color distribution.");
-      return { data: [] };
+      return { data: [] }; // Return empty data instead of error
     }
 
     const colorCounts: Record<string, number> = {};
     prendasData.forEach(p => {
-      if (p.color && PRENDA_COLORS.includes(p.color as PrendaColor)) {
+      if (p.color && PRENDA_COLORS.includes(p.color as PrendaColor)) { // Check if color is in our defined ENUM list
         colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
-      } else if (p.color) {
-        if (PRENDA_COLORS.includes('Otro')) {
+      } else if (p.color) { // If color exists but not in ENUM (should not happen if DB ENUM is enforced)
+         if (PRENDA_COLORS.includes('Otro')) { // Fallback to 'Otro' if defined
            colorCounts['Otro'] = (colorCounts['Otro'] || 0) + 1;
-        }
+         }
+         console.warn(`[STATS_WARN] Prenda con ID (no disponible aquí) tiene color '${p.color}' que no está en PRENDA_COLORS.`);
       }
+      // Prendas con p.color === NULL son ignoradas por el .not('color', 'is', null)
     });
     
     const chartColorsFallback = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
     let fallbackIndex = 0;
 
     const colorFrequencyData: ColorFrequency[] = Object.entries(colorCounts)
-      .filter(([, count]) => count > 0) 
+      .filter(([, count]) => count > 0) // Ensure only colors with count > 0 are included
       .map(([color, count]) => {
         let fill = PRENDA_COLOR_MAP_FULL[color as keyof typeof PRENDA_COLOR_MAP_FULL];
         if (!fill) { 
@@ -870,7 +906,7 @@ export async function getColorDistributionStatsAction(): Promise<{ data?: ColorF
         }
         return { color, count, fill };
       })
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => b.count - a.count); // Sort by count descending
 
     return { data: colorFrequencyData };
   } catch (error) {
@@ -972,8 +1008,10 @@ export async function getTimeActivityStatsAction(monthsAgo: number = 6): Promise
             activityData[monthKey]++;
             }
         } else {
+            console.warn(`[STATS_WARN] Invalid date found in calendar_assignments: ${assignment.fecha}`);
         }
       } catch(e) {
+        console.warn(`[STATS_WARN] Error parsing date from calendar_assignments: ${assignment.fecha}`, e);
       }
     });
 
@@ -1039,13 +1077,13 @@ export async function generateOptimizedOutfitSuggestionAction(
   }
 
   try {
-    const { temperature, ocasion } = params; // Changed from season to ocasion
+    const { temperature, ocasion } = params;
 
     const { data: allDbPrendas, error: prendasError } = await supabase
       .from('prendas')
       .select('*')
       .eq('is_archived', false)
-      .eq('estilo', ocasion); // Filter by 'estilo' column using the 'ocasion' input
+      .eq('estilo', ocasion); 
 
     if (prendasError) {
       console.error("Error fetching prendas for optimized suggestion:", prendasError);
@@ -1062,7 +1100,7 @@ export async function generateOptimizedOutfitSuggestionAction(
       (p.temperatura_max === null || p.temperatura_max >= temperature)
     );
 
-    if (suitablePrendas.length < 2) { // Need at least Cuerpo, Piernas. Zapatos can be more flexible.
+    if (suitablePrendas.length < 2) { 
       return { error: `No hay suficientes prendas adecuadas para la temperatura de ${temperature}°C y la ocasión '${ocasion}'.` };
     }
 
@@ -1090,8 +1128,8 @@ export async function generateOptimizedOutfitSuggestionAction(
       
       if (temperature <= 22 && prendasPorTipo['Abrigos'].length > 0) {
         outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
-      } else if (temperature > 22 && prendasPorTipo['Abrigos'].length > 0 && Math.random() < 0.2) { // Less chance for coat in warmer weather unless implied by occasion
-         if (ocasion.toLowerCase() === 'formal' || ocasion.toLowerCase() === 'trabajo') { // Example: formal/work might still suggest a light coat
+      } else if (temperature > 22 && prendasPorTipo['Abrigos'].length > 0 && Math.random() < 0.2) { 
+         if (ocasion.toLowerCase() === 'formal' || ocasion.toLowerCase() === 'trabajo') { 
             outfitCandidate.push(shuffleArray(prendasPorTipo['Abrigos'])[0]);
          }
       }
@@ -1121,13 +1159,13 @@ export async function generateOptimizedOutfitSuggestionAction(
       }));
       
       const outfitDescription = outfitItems.map(item => `${item.name} (${item.color})`).join(', ');
-      const temperatureRangeString = `${temperature}°C`; // Single temperature
+      const temperatureRangeString = `${temperature}°C`;
       const aiInput: GenerateOutfitExplanationInput = {
         temperatureRange: temperatureRangeString,
-        selectedStyle: ocasion, // Pass 'ocasion' as 'selectedStyle' to the explanation flow
+        selectedStyle: ocasion, 
         outfitDescription: outfitDescription,
-        userClosetInformationNeeded: true, // Assuming we want closet info for this detailed suggestion
-        ocasion: ocasion, // Pass a_ocasion also to the 'ocasion' field of the explanation flow
+        userClosetInformationNeeded: true, 
+        ocasion: ocasion,
       };
 
       const aiExplanation = await generateOutfitExplanation(aiInput);
@@ -1143,5 +1181,53 @@ export async function generateOptimizedOutfitSuggestionAction(
   } catch (error) {
     console.error('Error generating optimized outfit suggestion:', error);
     return { error: "Ocurrió un error inesperado al generar la sugerencia optimizada." };
+  }
+}
+
+// --- For InteractiveOutfitSuggestion / SeleccionarSugerenciaIA ---
+export async function getAlternativePrendasAction(
+  params: GetAlternativePrendasParams
+): Promise<{ data?: Prenda[]; error?: string }> {
+  if (!supabase) {
+    console.error("Supabase client is not initialized in getAlternativePrendasAction.");
+    return { error: "Error de conexión con la base de datos." };
+  }
+
+  const { tipo, temperature, styleId, currentPrendaId } = params;
+  const [minTemp, maxTemp] = temperature;
+
+  try {
+    let query = supabase
+      .from('prendas')
+      .select('*')
+      .eq('is_archived', false)
+      .eq('tipo', tipo)
+      .eq('estilo', styleId)
+      .neq('id', currentPrendaId); // Exclude the current prenda
+
+    // Apply temperature filtering
+    // A prenda is suitable if its range [p_min, p_max] overlaps with user's range [u_min, u_max]
+    // This means: p_min <= u_max AND p_max >= u_min
+    query = query.lte('temperatura_min', maxTemp)
+                 .gte('temperatura_max', minTemp);
+
+    const { data: dbData, error: dbError } = await query;
+
+    if (dbError) {
+      console.error("Error fetching alternative prendas:", dbError);
+      return { error: `Error al obtener prendas alternativas: ${dbError.message}` };
+    }
+
+    if (!dbData || dbData.length === 0) {
+      return { data: [] };
+    }
+
+    const alternatives: Prenda[] = dbData.map(mapDbPrendaToClient);
+    return { data: alternatives };
+
+  } catch (error) {
+    console.error("Unexpected error in getAlternativePrendasAction:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error inesperado al obtener alternativas.';
+    return { error: errorMessage };
   }
 }
