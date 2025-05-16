@@ -44,9 +44,9 @@ export interface Prenda {
   nombre: string;
   tipo: TipoPrenda;
   color: PrendaColor;
-  modelo: string;
+  modelo: string; // Formerly talla in UI
   temporada: string;
-  fechacompra: string; // YYYY-MM-DD
+  fechacompra: string; // YYYY-MM-DD, formerly ocasion in UI
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
@@ -176,7 +176,7 @@ export interface HistoricalSuggestion {
 // --- Optimized Outfit Suggester Types ---
 export interface OptimizedOutfitParams {
   temperature: number;
-  ocasion: string; // Changed from season: TemporadaPrenda
+  ocasion: string;
 }
 
 export const NEUTRAL_COLORS: PrendaColor[] = ['Negro', 'Blanco', 'Gris', 'Beige'];
@@ -184,3 +184,11 @@ export const DIFFICULT_COLOR_PAIRS: [PrendaColor, PrendaColor][] = [
   ['Marrón', 'Negro'],
   ['Rojo', 'Rosa'],
 ];
+
+// --- For InteractiveOutfitSuggestion / SeleccionarSugerenciaIA ---
+export interface GetAlternativePrendasParams {
+  tipo: TipoPrenda;
+  temperature: [number, number];
+  styleId: string;
+  currentPrendaId: number;
+}
