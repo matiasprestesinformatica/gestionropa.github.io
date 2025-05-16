@@ -3,29 +3,28 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+// Card components are used by OutfitSuggestion internally, not directly here unless wrapping.
 import { Button } from '@/components/ui/button';
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { ChangePrendaModal } from './ChangePrendaModal';
 import { LookForm } from '@/components/looks/LookForm';
 import type { SuggestedOutfit, OutfitItem, Prenda, TipoPrenda, LookFormData, Look } from '@/types';
-import { getAlternativePrendasAction, addLookAction } from '@/app/actions'; 
+import { getAlternativePrendasAction, addLookAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { Edit, Sparkles, Save } from 'lucide-react';
-
+import { Edit, Save } from 'lucide-react';
 
 interface SeleccionarSugerenciaIAProps {
   initialSuggestion: SuggestedOutfit;
   originalTemperature: [number, number];
   originalStyleId: string;
-  availablePrendas: Prenda[]; 
+  availablePrendasForLookForm: Prenda[];
 }
 
 export function SeleccionarSugerenciaIA({
   initialSuggestion,
   originalTemperature,
   originalStyleId,
-  availablePrendas,
+  availablePrendasForLookForm,
 }: SeleccionarSugerenciaIAProps) {
   const [currentOutfitItems, setCurrentOutfitItems] = React.useState<OutfitItem[]>(initialSuggestion.items);
   const [isChangeModalOpen, setIsChangeModalOpen] = React.useState(false);
@@ -96,49 +95,45 @@ export function SeleccionarSugerenciaIA({
       return { error: "Actualización no permitida desde aquí." };
     }
     const result = await addLookAction(data); 
+    if (result.error) {
+        toast({ title: "Error al Guardar Look", description: result.error, variant: "destructive" });
+    } else {
+        toast({ title: "Look Guardado", description: `El look "${result.data?.nombre}" ha sido guardado con éxito.` });
+    }
+    // Closing the form is handled by LookForm itself on successful submission
+    // if (!result.error) setIsLookFormOpen(false); 
     return result;
   };
 
   const currentSuggestionForDisplay: SuggestedOutfit = {
     ...initialSuggestion, 
     items: currentOutfitItems,
+    // Explanation comes from initialSuggestion, if it's dynamic it should be updated here too
+    explanation: initialSuggestion.explanation 
   };
 
   return (
-    <div className="mt-6">
-      <Card className="shadow-xl rounded-xl border-primary/50">
-        <CardHeader>
-          <CardTitle className="flex items-center text-lg">
-            <Sparkles className="mr-2 h-5 w-5 text-primary" />
-            Tu Sugerencia Interactiva
-          </CardTitle>
-          <CardDescription>
-            Puedes modificar las prendas sugeridas o guardar el conjunto como un nuevo Look.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OutfitSuggestion suggestion={currentSuggestionForDisplay} />
-          <div className="mt-6 flex flex-wrap gap-2 items-center justify-center border-t pt-4">
-             {currentOutfitItems.map((item, index) => (
-                <Button 
-                    key={item.id + '-' + index} 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleOpenChangeModal(item)}
-                    className="text-xs"
-                    title={`Cambiar ${item.name}`}
-                >
-                    <Edit className="mr-1.5 h-3.5 w-3.5" /> Cambiar {item.category}
-                </Button>
-             ))}
-          </div>
-        </CardContent>
-        <CardFooter className="border-t pt-4">
-          <Button onClick={handleSaveLook} className="w-full" size="lg">
-            <Save className="mr-2 h-5 w-5" /> Guardar como Look
-          </Button>
-        </CardFooter>
-      </Card>
+    <div className="mt-0"> {/* Container card is in the parent page */}
+      <OutfitSuggestion suggestion={currentSuggestionForDisplay} />
+      <div className="mt-4 flex flex-wrap gap-2 items-center justify-center border-t pt-3">
+          {currentOutfitItems.map((item, index) => (
+            <Button 
+                key={item.id + '-' + index + '-change-interactive'} 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleOpenChangeModal(item)}
+                className="text-xs"
+                title={`Cambiar ${item.name}`}
+            >
+                <Edit className="mr-1.5 h-3.5 w-3.5" /> Cambiar {item.category}
+            </Button>
+          ))}
+      </div>
+      <div className="mt-4 pt-3 border-t">
+        <Button onClick={handleSaveLook} className="w-full" size="default">
+          <Save className="mr-2 h-5 w-5" /> Guardar como Look
+        </Button>
+      </div>
 
       {prendaToChangeCategory && (
         <ChangePrendaModal
@@ -155,7 +150,7 @@ export function SeleccionarSugerenciaIA({
         isOpen={isLookFormOpen}
         onOpenChange={setIsLookFormOpen}
         onSubmit={handleLookFormSubmit}
-        availablePrendas={availablePrendas}
+        availablePrendas={availablePrendasForLookForm}
         initialPrendaIds={currentOutfitItems.map(item => Number(item.id))}
         initialData={null} 
       />

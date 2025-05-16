@@ -166,8 +166,13 @@
       "dashboard": {
         "__files__": [
           "ColorDistributionChart.tsx",
+          "InteractiveOutfitSuggestion.tsx",
           "StatsCard.tsx",
-          "nuevoprompts.tsx"
+          "seleccionarsugerenciaia.tsx",
+          "ChangePrendaModal.tsx",
+          "OptimizedOutfitSuggester.tsx",
+          "nuevoprompts.tsx",
+          "PromtOptimizado.tsx"
         ]
       }
     },
@@ -186,7 +191,8 @@
     "ai": {
       "__files__": [
         "genkit.ts",
-        "dev.ts"
+        "dev.ts",
+        "ai-instance.ts"
       ],
       "flows": {
         "__files__": [

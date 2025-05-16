@@ -7,16 +7,16 @@ import { Navbar } from '@/components/ui/Navbar';
 import { Footer } from '@/components/ui/Footer';
 import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ColorDistributionChart } from '@/components/dashboard/ColorDistributionChart';
-import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid, CalendarClock } from 'lucide-react';
-import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types';
-import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions';
+import { Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid, CalendarClock } from 'lucide-react'; // Removed FileText as it wasn't used
+import type { SuggestedOutfit, StatisticsSummary, ColorFrequency, Prenda } from '@/types';
+import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction, getPrendasAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-// import { NuevoPrompts } from '@/components/dashboard/nuevoprompts'; // No longer used directly if PromtOptimizado handles its own content
-// import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado'; // Removed this import
-import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester'; // Import the new component
+import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester';
+import { SeleccionarSugerenciaIA } from '@/components/dashboard/seleccionarsugerenciaia'; // Added import
+import { OutfitExplanation } from '@/components/OutfitExplanation'; // Added import
+
 
 const mockStatsSummary: StatisticsSummary = {
   totalPrendas: 0,
@@ -37,6 +37,10 @@ export default function HomePage() {
   const [stats, setStats] = React.useState<StatisticsSummary>(mockStatsSummary);
   const [colorFrequency, setColorFrequency] = React.useState<ColorFrequency[]>(mockColorFrequency);
   const [randomSuggestion, setRandomSuggestion] = React.useState<SuggestedOutfit | null>(null);
+  const [originalRandomTemp, setOriginalRandomTemp] = React.useState<[number, number]>([0,0]);
+  const [originalRandomStyle, setOriginalRandomStyle] = React.useState<string>('');
+  const [availablePrendas, setAvailablePrendas] = React.useState<Prenda[]>([]);
+  
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -45,7 +49,12 @@ export default function HomePage() {
     setIsLoading(true);
     setError(null);
     try {
-      const statsResult = await getStatisticsSummaryAction();
+      const [statsResult, colorsResult, prendasResult] = await Promise.all([
+        getStatisticsSummaryAction(),
+        getColorDistributionStatsAction(),
+        getPrendasAction()
+      ]);
+
       if (statsResult.error || !statsResult.data) {
         console.warn("Error fetching stats summary:", statsResult.error);
         setStats(mockStatsSummary);
@@ -53,27 +62,38 @@ export default function HomePage() {
         setStats(statsResult.data);
       }
 
-      const colorsResult = await getColorDistributionStatsAction();
       if (colorsResult.error || !colorsResult.data) {
          console.warn("Error fetching color distribution:", colorsResult.error);
          setColorFrequency(mockColorFrequency);
       } else {
         setColorFrequency(colorsResult.data.length > 0 ? colorsResult.data : mockColorFrequency);
       }
+
+      if (prendasResult.data) {
+        setAvailablePrendas(prendasResult.data.filter(p => !p.is_archived));
+      } else {
+        console.warn("Error fetching available prendas:", prendasResult.error);
+        setAvailablePrendas([]);
+      }
       
       const totalPrendasForSuggestion = statsResult.data?.totalPrendas ?? 0;
 
       if (totalPrendasForSuggestion > 0) {
-        const styles = ['casual', 'formal', 'sporty', 'bohemian'];
-        const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+        const styles = ['casual', 'formal', 'sporty', 'bohemian']; 
+        const randomStyleId = styles[Math.floor(Math.random() * styles.length)];
         const randomTempMin = Math.floor(Math.random() * 20) + 5;
         const randomTempMax = randomTempMin + Math.floor(Math.random() * 10) + 5;
+        const tempRange: [number, number] = [randomTempMin, randomTempMax];
+
+        setOriginalRandomStyle(randomStyleId);
+        setOriginalRandomTemp(tempRange);
 
         const suggestionResult = await getAISuggestionAction({
-          temperature: [randomTempMin, randomTempMax],
-          styleId: randomStyle,
+          temperature: tempRange,
+          styleId: randomStyleId,
           useClosetInfo: true,
         });
+
         if ('error' in suggestionResult) {
           console.warn("Error fetching random suggestion for dashboard:", suggestionResult.error);
           setRandomSuggestion(null);
@@ -157,15 +177,27 @@ export default function HomePage() {
 
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
-              <CardTitle>Sugerencia Rápida AI</CardTitle>
-              <CardDescription>Un look aleatorio para inspirarte desde tu armario.</CardDescription>
+              <CardTitle>Sugerencia Rápida AI (Interactiva)</CardTitle>
+              <CardDescription>Un look aleatorio para inspirarte. Puedes modificarlo y guardarlo.</CardDescription>
             </CardHeader>
             <CardContent>
-              {randomSuggestion ? (
-                <OutfitSuggestion suggestion={randomSuggestion} />
+              {randomSuggestion && originalRandomStyle && originalRandomTemp.length === 2 && availablePrendas.length > 0 ? (
+                <>
+                  <SeleccionarSugerenciaIA
+                    initialSuggestion={randomSuggestion}
+                    originalTemperature={originalRandomTemp}
+                    originalStyleId={originalRandomStyle}
+                    availablePrendasForLookForm={availablePrendas}
+                  />
+                  {randomSuggestion.explanation && (
+                    <div className="mt-4">
+                      <OutfitExplanation explanation={randomSuggestion.explanation} />
+                    </div>
+                  )}
+                </>
               ) : (
                  stats.totalPrendas > 0 ? 
-                 <p className="text-muted-foreground text-center py-8">No se pudo generar una sugerencia aleatoria en este momento.</p>
+                 <p className="text-muted-foreground text-center py-8">No se pudo generar una sugerencia aleatoria en este momento o faltan datos para la interacción.</p>
                  : <p className="text-muted-foreground text-center py-8">Agrega prendas a tu armario para recibir sugerencias.</p>
               )}
             </CardContent>
@@ -174,8 +206,6 @@ export default function HomePage() {
         
         <div className="grid grid-cols-1 gap-8">
            <OptimizedOutfitSuggester />
-           {/* <PromtOptimizado /> Removed this component from rendering */}
-           {/* <NuevoPrompts suggestionForDisplay={randomSuggestion} />  Potentially redundant or can be merged */}
         </div>
 
       </main>

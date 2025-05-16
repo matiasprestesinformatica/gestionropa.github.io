@@ -5,6 +5,7 @@ import * as React from 'react';
 import { Navbar } from '@/components/ui/Navbar';
 import { TemperatureControl } from '@/components/TemperatureControl';
 import { StyleSelection } from '@/components/StyleSelection';
+// OutfitSuggestion is now rendered within SeleccionarSugerenciaIA
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -199,7 +200,7 @@ export default function SugerenciaAIPage() {
                 initialSuggestion={suggestion}
                 originalTemperature={temperature}
                 originalStyleId={selectedStyle}
-                availablePrendas={availablePrendas}
+                availablePrendasForLookForm={availablePrendas}
               />
             )}
             

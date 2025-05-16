@@ -52,6 +52,7 @@ src/
 ├── ai/
 │   ├── flows/
 │   │   └── generate-outfit-explanation.ts
+│   ├── ai-instance.ts
 │   ├── dev.ts
 │   └── genkit.ts
 ├── app/
@@ -87,9 +88,14 @@ src/
 │   │   ├── AssignmentCard.tsx
 │   │   └── AssignmentModal.tsx
 │   ├── dashboard/
+│   │   ├── ChangePrendaModal.tsx
 │   │   ├── ColorDistributionChart.tsx
+│   │   ├── InteractiveOutfitSuggestion.tsx
+│   │   ├── OptimizedOutfitSuggester.tsx
+│   │   ├── PromtOptimizado.tsx
 │   │   ├── StatsCard.tsx
-│   │   └── nuevoprompts.tsx
+│   │   ├── nuevoprompts.tsx
+│   │   └── seleccionarsugerenciaia.tsx
 │   ├── icons/
 │   │   └── Logo.tsx
 │   ├── looks/
