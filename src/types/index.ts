@@ -20,10 +20,10 @@ export interface StyleOption {
 }
 
 export interface OutfitItem {
-  id: string; // Can be Prenda ID
+  id: string;
   name: string;
   imageUrl: string;
-  category: TipoPrenda | string; // Use TipoPrenda for consistency
+  category: string;
   aiHint: string;
   color?: PrendaColor | string;
 }
@@ -44,9 +44,9 @@ export interface Prenda {
   nombre: string;
   tipo: TipoPrenda;
   color: PrendaColor;
-  modelo: string; // Was talla
-  temporada: TemporadaPrenda;
-  fechacompra: string; // Was ocasion, YYYY-MM-DD, or null
+  modelo: string;
+  temporada: string;
+  fechacompra: string; // YYYY-MM-DD
   imagen_url: string;
   temperatura_min?: number | null;
   temperatura_max?: number | null;
@@ -129,11 +129,9 @@ export interface WishlistItem {
 export type WishlistFormData = Omit<WishlistItem, 'id' | 'status' | 'added_at'>;
 
 // --- Dashboard & Statistics Types ---
-export interface StatisticsSummary {
+export interface DashboardStats { // Original, might be deprecated by StatisticsSummary for / page
   totalPrendas: number;
   totalLooks: number;
-  prendasPorEstiloCount: number;
-  looksUsadosEsteMes: number;
 }
 
 export interface ColorFrequency {
@@ -154,6 +152,13 @@ export interface TimeActivityStat {
   fill?: string;
 }
 
+export interface StatisticsSummary { // Used by /statistics and new / page
+  totalPrendas: number;
+  totalLooks: number;
+  prendasPorEstiloCount: number;
+  looksUsadosEsteMes: number;
+}
+
 export interface IntelligentInsightData {
   dominantStyle?: { name: string; percentage: number };
 }
@@ -171,7 +176,7 @@ export interface HistoricalSuggestion {
 // --- Optimized Outfit Suggester Types ---
 export interface OptimizedOutfitParams {
   temperature: number;
-  ocasion: string; 
+  ocasion: string; // Changed from season: TemporadaPrenda
 }
 
 export const NEUTRAL_COLORS: PrendaColor[] = ['Negro', 'Blanco', 'Gris', 'Beige'];
@@ -179,11 +184,3 @@ export const DIFFICULT_COLOR_PAIRS: [PrendaColor, PrendaColor][] = [
   ['Marrón', 'Negro'],
   ['Rojo', 'Rosa'],
 ];
-
-// --- Interactive Outfit Suggestion Types ---
-export interface GetAlternativePrendasParams {
-  tipo: TipoPrenda;
-  originalTemperature: [number, number];
-  originalStyleId: string;
-  currentPrendaIdToExclude: number; // ID of the prenda currently in the slot, to exclude it
-}

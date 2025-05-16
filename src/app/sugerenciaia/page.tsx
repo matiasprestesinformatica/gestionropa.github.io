@@ -5,26 +5,25 @@ import * as React from 'react';
 import { Navbar } from '@/components/ui/Navbar';
 import { TemperatureControl } from '@/components/TemperatureControl';
 import { StyleSelection } from '@/components/StyleSelection';
-// OutfitSuggestion is now rendered within SeleccionarSugerenciaIA
+import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, AlertTriangle, MessageSquareText } from 'lucide-react';
-import { getAISuggestionAction, getPrendasAction } from '../actions';
-import type { SuggestedOutfit, HistoricalSuggestion, Prenda } from '@/types';
+import { getAISuggestionAction } from '../actions'; // Adjusted import path
+import type { SuggestedOutfit, HistoricalSuggestion } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Footer } from '@/components/ui/Footer';
 import { OutfitExplanation } from '@/components/OutfitExplanation';
 import { SuggestionHistory } from '@/components/SuggestionHistory';
 import { InspirationCard } from '@/components/InspirationCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { SeleccionarSugerenciaIA } from '@/components/dashboard/seleccionarsugerenciaia';
 
 const LOCAL_STORAGE_HISTORY_KEY = 'estilosia_suggestion_history';
-const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_suggester';
+const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_suggester'; // Unique key for this page's notes
 
-export default function SugerenciaAIPage() {
+export default function SugerenciaAIPage() { // Renamed from HomePage
   const [temperature, setTemperature] = React.useState<[number, number]>([18, 22]);
   const [selectedStyle, setSelectedStyle] = React.useState<string | null>('casual');
   const [useClosetInfo, setUseClosetInfo] = React.useState<boolean>(true);
@@ -34,7 +33,6 @@ export default function SugerenciaAIPage() {
   
   const [suggestionHistory, setSuggestionHistory] = React.useState<HistoricalSuggestion[]>([]);
   const [userNotes, setUserNotes] = React.useState<string>('');
-  const [availablePrendas, setAvailablePrendas] = React.useState<Prenda[]>([]);
 
   const { toast } = useToast();
 
@@ -52,18 +50,7 @@ export default function SugerenciaAIPage() {
     if (storedNotes) {
       setUserNotes(storedNotes);
     }
-    
-    const fetchAllPrendas = async () => {
-        const prendasResult = await getPrendasAction();
-        if (prendasResult.data) {
-            setAvailablePrendas(prendasResult.data.filter(p => !p.is_archived));
-        } else if (prendasResult.error) {
-            toast({ title: "Error al cargar prendas", description: "No se pudieron cargar las prendas para crear looks o cambiar sugerencias.", variant: "destructive"});
-        }
-    };
-    fetchAllPrendas();
-
-  }, [toast]);
+  }, []);
 
   const saveHistory = (history: HistoricalSuggestion[]) => {
     try {
@@ -99,7 +86,6 @@ export default function SugerenciaAIPage() {
 
     setIsLoading(true);
     setError(null);
-    setSuggestion(null);
     
     const result = await getAISuggestionAction({
       temperature,
@@ -125,7 +111,7 @@ export default function SugerenciaAIPage() {
         useClosetInfo,
         suggestion: result,
       };
-      const updatedHistory = [newHistoryItem, ...suggestionHistory].slice(0, 10); // Keep last 10
+      const updatedHistory = [newHistoryItem, ...suggestionHistory].slice(0, 10);
       setSuggestionHistory(updatedHistory);
       saveHistory(updatedHistory);
     }
@@ -195,16 +181,8 @@ export default function SugerenciaAIPage() {
               </div>
             )}
 
-            {suggestion && selectedStyle && (
-              <SeleccionarSugerenciaIA 
-                initialSuggestion={suggestion}
-                originalTemperature={temperature}
-                originalStyleId={selectedStyle}
-                availablePrendasForLookForm={availablePrendas}
-              />
-            )}
-            
-            {suggestion?.explanation && <OutfitExplanation explanation={suggestion.explanation} />}
+            {suggestion && <OutfitSuggestion suggestion={suggestion} />}
+            {suggestion && <OutfitExplanation explanation={suggestion.explanation} />}
 
             {suggestion && (
                 <Card className="shadow-lg rounded-xl mt-6">

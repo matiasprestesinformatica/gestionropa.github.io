@@ -29,7 +29,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Look, LookFormData, Prenda } from '@/types';
 import { styleOptions } from '@/components/StyleSelection';
 import { MultiSelectCommand, type MultiSelectItem } from '@/components/ui/MultiSelectCommand';
-// Removed getPrendasAction import as availablePrendas is now a prop
+import { getPrendasAction } from '@/app/actions';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,18 +46,10 @@ interface LookFormProps {
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (data: LookFormData, lookId?: number) => Promise<{ data?: Look; error?: string; validationErrors?: z.ZodIssue[] }>;
   initialData?: Look | null;
-  availablePrendas: Prenda[]; // Made mandatory
-  initialPrendaIds?: number[]; // New prop for pre-filling prenda_ids
+  availablePrendas: Prenda[];
 }
 
-export function LookForm({ 
-  isOpen, 
-  onOpenChange, 
-  onSubmit, 
-  initialData, 
-  availablePrendas,
-  initialPrendaIds 
-}: LookFormProps) {
+export function LookForm({ isOpen, onOpenChange, onSubmit, initialData, availablePrendas }: LookFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
@@ -70,33 +62,31 @@ export function LookForm({
     defaultValues: {
       nombre: '',
       descripcion: '',
-      estilo: styleOptions[0]?.id || '', // Ensure a default if styleOptions is not empty
+      estilo: '',
       imagen_url: '',
       prenda_ids: [],
     },
   });
 
   React.useEffect(() => {
-    if (isOpen) { // Only reset form when dialog opens
-      if (initialData) { // Editing an existing look
-        form.reset({
-          nombre: initialData.nombre,
-          descripcion: initialData.descripcion || '',
-          estilo: initialData.estilo,
-          imagen_url: initialData.imagen_url || '',
-          prenda_ids: initialData.prendas.map(p => p.id),
-        });
-      } else { // Creating a new look
-        form.reset({
-          nombre: '',
-          descripcion: '',
-          estilo: styleOptions[0]?.id || '',
-          imagen_url: '',
-          prenda_ids: initialPrendaIds || [], // Use initialPrendaIds if provided
-        });
-      }
+    if (initialData) {
+      form.reset({
+        nombre: initialData.nombre,
+        descripcion: initialData.descripcion || '',
+        estilo: initialData.estilo,
+        imagen_url: initialData.imagen_url || '',
+        prenda_ids: initialData.prendas.map(p => p.id),
+      });
+    } else {
+      form.reset({ // Reset to default empty values for new form
+        nombre: '',
+        descripcion: '',
+        estilo: '',
+        imagen_url: '',
+        prenda_ids: [],
+      });
     }
-  }, [initialData, form, isOpen, initialPrendaIds]);
+  }, [initialData, form, isOpen]); // isOpen ensures reset when dialog opens
 
   const handleFormSubmit = async (data: LookFormData) => {
     setIsSubmitting(true);
@@ -106,7 +96,7 @@ export function LookForm({
     if (result.error) {
       if (result.validationErrors) {
         result.validationErrors.forEach(err => {
-          // @ts-ignore - Zod path can be more complex, but for simple cases this works
+          // @ts-ignore
           form.setError(err.path[0] as keyof LookFormData, { message: err.message });
         });
       }
@@ -120,7 +110,7 @@ export function LookForm({
         title: 'Éxito',
         description: `Look ${initialData ? 'actualizado' : 'creado'} correctamente.`,
       });
-      onOpenChange(false); 
+      onOpenChange(false); // Close dialog on success
     }
   };
 
@@ -134,7 +124,7 @@ export function LookForm({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(handleFormSubmit)}>
-          <ScrollArea className="max-h-[70vh] p-1 pr-3"> 
+          <ScrollArea className="max-h-[70vh] p-1 pr-3"> {/* Added padding for scrollbar */}
             <div className="grid gap-5 py-4">
               <div>
                 <Label htmlFor="nombre" className="font-medium">Nombre del Look</Label>
@@ -177,8 +167,8 @@ export function LookForm({
                   render={({ field }) => (
                     <MultiSelectCommand
                       options={prendaOptions}
-                      selectedValues={field.value.map(String)} 
-                      onSelectedValuesChange={(newValues) => field.onChange(newValues.map(Number))} 
+                      selectedValues={field.value.map(String)} // MultiSelectCommand expects string values
+                      onSelectedValuesChange={(newValues) => field.onChange(newValues.map(Number))} // Convert back to numbers
                       placeholder="Selecciona prendas..."
                       searchPlaceholder="Buscar prendas..."
                       emptyResultText="No se encontraron prendas."
