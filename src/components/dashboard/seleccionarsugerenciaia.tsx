@@ -9,16 +9,16 @@ import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { ChangePrendaModal } from './ChangePrendaModal';
 import { LookForm } from '@/components/looks/LookForm';
 import type { SuggestedOutfit, OutfitItem, Prenda, TipoPrenda, LookFormData, Look } from '@/types';
-import { getAlternativePrendasAction, addLookAction } from '@/app/actions'; // Assuming addLookAction is appropriate here
+import { getAlternativePrendasAction, addLookAction } from '@/app/actions'; 
 import { useToast } from '@/hooks/use-toast';
 import { Edit, Sparkles, Save } from 'lucide-react';
-import { revalidatePath } from 'next/cache'; // This won't work client-side, handled in LookForm via server action
+
 
 interface SeleccionarSugerenciaIAProps {
   initialSuggestion: SuggestedOutfit;
   originalTemperature: [number, number];
   originalStyleId: string;
-  availablePrendas: Prenda[]; // All prendas for LookForm and alternative selection
+  availablePrendas: Prenda[]; 
 }
 
 export function SeleccionarSugerenciaIA({
@@ -90,20 +90,17 @@ export function SeleccionarSugerenciaIA({
     setIsLookFormOpen(true);
   };
   
-  // This function will be passed to LookForm's onSubmit prop
   const handleLookFormSubmit = async (data: LookFormData, lookId?: number): Promise<{ data?: Look; error?: string }> => {
-    if (lookId) { // This component is for creating new looks from suggestions
+    if (lookId) { 
       toast({ title: "Error", description: "Esta función es para crear nuevos looks, no para actualizar.", variant: "destructive" });
       return { error: "Actualización no permitida desde aquí." };
     }
-    const result = await addLookAction(data); // addLookAction should handle revalidation
-    // No need to call revalidatePath here as it's a client component
-    // Revalidation should happen within addLookAction or the page displaying looks should refetch
+    const result = await addLookAction(data); 
     return result;
   };
 
   const currentSuggestionForDisplay: SuggestedOutfit = {
-    ...initialSuggestion, // Retain original explanation for now
+    ...initialSuggestion, 
     items: currentOutfitItems,
   };
 
@@ -160,7 +157,7 @@ export function SeleccionarSugerenciaIA({
         onSubmit={handleLookFormSubmit}
         availablePrendas={availablePrendas}
         initialPrendaIds={currentOutfitItems.map(item => Number(item.id))}
-        initialData={null} // Always creating a new look
+        initialData={null} 
       />
     </div>
   );
