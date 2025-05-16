@@ -14,8 +14,8 @@ import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid,
 import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types';
 import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions';
 import { useToast } from '@/hooks/use-toast';
-import { NuevoPrompts } from '@/components/dashboard/nuevoprompts';
-import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado';
+// import { NuevoPrompts } from '@/components/dashboard/nuevoprompts'; // No longer used directly if PromtOptimizado handles its own content
+// import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado'; // Removed this import
 import { OptimizedOutfitSuggester } from '@/components/dashboard/OptimizedOutfitSuggester'; // Import the new component
 
 const mockStatsSummary: StatisticsSummary = {
@@ -174,7 +174,7 @@ export default function HomePage() {
         
         <div className="grid grid-cols-1 gap-8">
            <OptimizedOutfitSuggester />
-           <PromtOptimizado />
+           {/* <PromtOptimizado /> Removed this component from rendering */}
            {/* <NuevoPrompts suggestionForDisplay={randomSuggestion} />  Potentially redundant or can be merged */}
         </div>
 
