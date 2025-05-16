@@ -1,0 +1,168 @@
+Estructura de: /home/user/studio/public
+public/
+└── ropa/
+    ├── antes/
+    │   ├── Blazer blanco 3-4.jpg
+    │   ├── Blazer cuadrille rojo.jpg
+    │   ├── Blazer ml verde.jpg
+    │   ├── Camisa estampada ml verde.jpg
+    │   ├── Camisa lino ml beige .jpg
+    │   ├── Camisa ml blanca.jpg
+    │   ├── Campera hilo verde corta.jpg
+    │   ├── Campera lana negra.jpg
+    │   ├── Championes altos abrigados blancos.jpg
+    │   ├── Jean lemon.jpg
+    │   ├── Jean moom azul claro.jpg
+    │   ├── Jean recto azul.jpg
+    │   ├── Musculosa mariposa blanca.jpg
+    │   ├── Pantalón baggy negro.jpg
+    │   ├── Pantalón cuadrille.jpg
+    │   ├── Pantalón deportivo con puños celeste.jpg
+    │   ├── Remera mc azul.jpg
+    │   ├── Remera mc blanca.jpg
+    │   ├── Remera mc negra .jpg
+    │   ├── Remera mc negra.jpg
+    │   ├── Remera ml verde aceituna .jpg
+    │   └── Saco lanilla celeste .jpg
+    ├── Blazer blanco 3-4.png
+    ├── Blazer cuadrille rojo.png
+    ├── Blazer ml verde.png
+    ├── Camisa estampada ml verde.png
+    ├── Camisa lino ml beige.png
+    ├── Camisa ml blanca.png
+    ├── Campera hilo verde corta.png
+    ├── Campera lana negra.png
+    ├── Championes altos abrigados blancos.png
+    ├── Jean lemon.png
+    ├── Jean moom azul claro.png
+    ├── Jean recto azul.png
+    ├── Musculosa mariposa blanca.png
+    ├── Pantalón baggy negro.png
+    ├── Pantalón cuadrille.png
+    ├── Pantalón deportivo con puños celeste.png
+    ├── Remera mc azul.png
+    ├── Remera mc blanca.png
+    ├── Remera mc negra mc azul.png
+    ├── Remera mc negra.png
+    ├── Remera ml verde aceituna.png
+    └── Saco lanilla celeste.png
+
+Estructura de: /home/user/studio/src
+src/
+├── ai/
+│   ├── flows/
+│   │   └── generate-outfit-explanation.ts
+│   ├── dev.ts
+│   └── genkit.ts
+├── app/
+│   ├── archivo/
+│   │   └── page.tsx
+│   ├── calendario/
+│   │   └── page.tsx
+│   ├── closet/
+│   │   └── page.tsx
+│   ├── configuracion/
+│   │   └── page.tsx
+│   ├── dashboard/
+│   │   └── page.tsx
+│   ├── deseos/
+│   │   └── page.tsx
+│   ├── looks/
+│   │   └── page.tsx
+│   ├── privacy-policy/
+│   │   └── page.tsx
+│   ├── settings/
+│   │   └── page.tsx
+│   ├── statistics/
+│   │   └── page.tsx
+│   ├── sugerenciaia/
+│   │   └── page.tsx
+│   ├── actions.ts
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── calendario/
+│   │   ├── AssignmentCard.tsx
+│   │   └── AssignmentModal.tsx
+│   ├── dashboard/
+│   │   ├── ColorDistributionChart.tsx
+│   │   ├── StatsCard.tsx
+│   │   └── nuevoprompts.tsx
+│   ├── icons/
+│   │   └── Logo.tsx
+│   ├── looks/
+│   │   ├── LookCard.tsx
+│   │   └── LookForm.tsx
+│   ├── statistics/
+│   │   ├── IntelligentInsightCard.tsx
+│   │   ├── StyleUsageChart.tsx
+│   │   └── TimeActivityChart.tsx
+│   ├── ui/
+│   │   ├── Footer.tsx
+│   │   ├── MultiSelectCommand.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── accordion.tsx
+│   │   ├── alert-dialog.tsx
+│   │   ├── alert.tsx
+│   │   ├── avatar.tsx
+│   │   ├── badge.tsx
+│   │   ├── button.tsx
+│   │   ├── calendar.tsx
+│   │   ├── card.tsx
+│   │   ├── chart.tsx
+│   │   ├── checkbox.tsx
+│   │   ├── command.tsx
+│   │   ├── dialog.tsx
+│   │   ├── dropdown-menu.tsx
+│   │   ├── form.tsx
+│   │   ├── input.tsx
+│   │   ├── label.tsx
+│   │   ├── menubar.tsx
+│   │   ├── popover.tsx
+│   │   ├── progress.tsx
+│   │   ├── radio-group.tsx
+│   │   ├── scroll-area.tsx
+│   │   ├── select.tsx
+│   │   ├── separator.tsx
+│   │   ├── sheet.tsx
+│   │   ├── sidebar.tsx
+│   │   ├── skeleton.tsx
+│   │   ├── slider.tsx
+│   │   ├── switch.tsx
+│   │   ├── table.tsx
+│   │   ├── tabs.tsx
+│   │   ├── textarea.tsx
+│   │   ├── toast.tsx
+│   │   ├── toaster.tsx
+│   │   └── tooltip.tsx
+│   ├── wishlist/
+│   │   ├── WishlistForm.tsx
+│   │   └── WishlistItemCard.tsx
+│   ├── ClosetFilterBar.tsx
+│   ├── ClothingCard.tsx
+│   ├── ClothingForm.tsx
+│   ├── ClothingTable.tsx
+│   ├── ColorSwatch.tsx
+│   ├── GridCardsToggle.tsx
+│   ├── Header.tsx
+│   ├── InspirationCard.tsx
+│   ├── OutfitExplanation.tsx
+│   ├── OutfitSuggestion.tsx
+│   ├── StyleSelection.tsx
+│   ├── SuggestionHistory.tsx
+│   └── TemperatureControl.tsx
+├── data/
+│   ├── prendas_ejemplos.csv
+│   └── ropa_filenames_example.txt
+├── hooks/
+│   ├── use-mobile.tsx
+│   └── use-toast.ts
+├── lib/
+│   ├── dataMappers.ts
+│   ├── supabaseClient.ts
+│   └── utils.ts
+└── types/
+    └── index.ts
+

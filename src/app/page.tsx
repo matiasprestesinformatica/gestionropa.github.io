@@ -15,6 +15,7 @@ import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types
 import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions'; // Updated imports
 import { useToast } from '@/hooks/use-toast';
 import { NuevoPrompts } from '@/components/dashboard/nuevoprompts';
+import { PromtOptimizado } from '@/components/dashboard/PromtOptimizado'; // Import the new component
 
 const mockStatsSummary: StatisticsSummary = {
   totalPrendas: 0,
@@ -173,7 +174,10 @@ export default function HomePage() {
           </Card>
         </div>
         
-        <div className="grid grid-cols-1">
+        <div className="grid grid-cols-1 gap-8">
+           <PromtOptimizado /> {/* Added the new component here */}
+           {/* The NuevoPrompts component might be redundant now or could be merged with PromtOptimizado */}
+           {/* For now, I'll leave NuevoPrompts if it serves a distinct purpose for other AI prompts */}
            <NuevoPrompts suggestionForDisplay={randomSuggestion} />
         </div>
 
