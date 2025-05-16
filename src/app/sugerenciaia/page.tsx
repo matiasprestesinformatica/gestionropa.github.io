@@ -18,8 +18,7 @@ import { OutfitExplanation } from '@/components/OutfitExplanation';
 import { SuggestionHistory } from '@/components/SuggestionHistory';
 import { InspirationCard } from '@/components/InspirationCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { SeleccionarSugerenciaIA } from '@/components/dashboard/seleccionarsugerenciaia'; // Updated import name
-
+import { SeleccionarSugerenciaIA } from '@/components/dashboard/seleccionarsugerenciaia';
 
 const LOCAL_STORAGE_HISTORY_KEY = 'estilosia_suggestion_history';
 const LOCAL_STORAGE_NOTES_KEY = 'estilosia_user_notes_suggester';
@@ -125,7 +124,7 @@ export default function SugerenciaAIPage() {
         useClosetInfo,
         suggestion: result,
       };
-      const updatedHistory = [newHistoryItem, ...suggestionHistory].slice(0, 10);
+      const updatedHistory = [newHistoryItem, ...suggestionHistory].slice(0, 10); // Keep last 10
       setSuggestionHistory(updatedHistory);
       saveHistory(updatedHistory);
     }
