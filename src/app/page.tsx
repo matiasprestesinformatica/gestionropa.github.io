@@ -10,15 +10,17 @@ import { ColorDistributionChart } from '@/components/dashboard/ColorDistribution
 import { OutfitSuggestion } from '@/components/OutfitSuggestion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
-import type { SuggestedOutfit, DashboardStats, ColorFrequency } from '@/types';
-import { getAISuggestionAction, getPrendasAction } from './actions';
+import { FileText, Palette, Shirt, Sparkles, Loader2, AlertTriangle, LayoutGrid, CalendarClock } from 'lucide-react'; // Added LayoutGrid, CalendarClock
+import type { SuggestedOutfit, StatisticsSummary, ColorFrequency } from '@/types'; // Updated DashboardStats to StatisticsSummary
+import { getAISuggestionAction, getStatisticsSummaryAction, getColorDistributionStatsAction } from './actions'; // Updated imports
 import { useToast } from '@/hooks/use-toast';
-import { NuevoPrompts } from '@/components/dashboard/nuevoprompts'; // Import the new component
+import { NuevoPrompts } from '@/components/dashboard/nuevoprompts';
 
-const mockDashboardStats: DashboardStats = {
+const mockStatsSummary: StatisticsSummary = {
   totalPrendas: 0,
   totalLooks: 0,
+  prendasPorEstiloCount: 0,
+  looksUsadosEsteMes: 0,
 };
 
 const mockColorFrequency: ColorFrequency[] = [
@@ -29,8 +31,8 @@ const mockColorFrequency: ColorFrequency[] = [
   { color: 'Verde', count: 0, fill: 'hsl(var(--chart-5))' },
 ];
 
-export default function HomePage() { // Renamed from DashboardPage
-  const [stats, setStats] = React.useState<DashboardStats>(mockDashboardStats);
+export default function HomePage() {
+  const [stats, setStats] = React.useState<StatisticsSummary>(mockStatsSummary);
   const [colorFrequency, setColorFrequency] = React.useState<ColorFrequency[]>(mockColorFrequency);
   const [randomSuggestion, setRandomSuggestion] = React.useState<SuggestedOutfit | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -41,31 +43,29 @@ export default function HomePage() { // Renamed from DashboardPage
     setIsLoading(true);
     setError(null);
     try {
-      const prendasResult = await getPrendasAction();
-      if (prendasResult.error || !prendasResult.data) {
-        throw new Error(prendasResult.error || 'No se pudieron cargar las prendas.');
+      // Fetch stats summary
+      const statsResult = await getStatisticsSummaryAction();
+      if (statsResult.error || !statsResult.data) {
+        console.warn("Error fetching stats summary:", statsResult.error);
+        // Continue with mock/default stats for some parts
+        setStats(mockStatsSummary);
+      } else {
+        setStats(statsResult.data);
       }
-      const prendas = prendasResult.data;
 
-      const totalPrendas = prendas.length;
-      // TODO: Fetch totalLooks count from the database
-      setStats({ totalPrendas, totalLooks: 0 }); // Mocking totalLooks for now
-
-      const colorCounts: Record<string, number> = {};
-      prendas.forEach(p => {
-        if (p.color) {
-          colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
-        }
-      });
+      // Fetch color distribution
+      const colorsResult = await getColorDistributionStatsAction();
+      if (colorsResult.error || !colorsResult.data) {
+         console.warn("Error fetching color distribution:", colorsResult.error);
+         setColorFrequency(mockColorFrequency);
+      } else {
+        setColorFrequency(colorsResult.data.length > 0 ? colorsResult.data : mockColorFrequency);
+      }
       
-      const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-      const sortedColors = Object.entries(colorCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([color, count], index) => ({ color, count, fill: chartColors[index % chartColors.length] }));
-      setColorFrequency(sortedColors.length > 0 ? sortedColors : mockColorFrequency);
+      // Fetch prendas count for suggestion logic (re-using totalPrendas from stats if available)
+      const totalPrendasForSuggestion = statsResult.data?.totalPrendas ?? 0;
 
-      if (prendas.length > 0) {
+      if (totalPrendasForSuggestion > 0) {
         const styles = ['casual', 'formal', 'sporty', 'bohemian'];
         const randomStyle = styles[Math.floor(Math.random() * styles.length)];
         const randomTempMin = Math.floor(Math.random() * 20) + 5;
@@ -87,7 +87,7 @@ export default function HomePage() { // Renamed from DashboardPage
       }
 
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Error desconocido';
+      const errorMessage = e instanceof Error ? e.message : 'Error desconocido al cargar el dashboard.';
       setError(errorMessage);
       toast({ title: 'Error al cargar el dashboard', description: errorMessage, variant: 'destructive' });
     }
@@ -135,13 +135,13 @@ export default function HomePage() { // Renamed from DashboardPage
       <main className="flex-grow container mx-auto px-4 py-8 space-y-8">
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatsCard title="Total de Prendas" value={stats.totalPrendas.toString()} icon={Shirt} description="Prendas en tu armario" />
+          <StatsCard title="Total de Prendas" value={stats.totalPrendas.toString()} icon={Shirt} description="Prendas activas en tu armario" />
           <StatsCard title="Looks Guardados" value={stats.totalLooks.toString()} icon={Sparkles} description="Combinaciones creadas" />
-          <StatsCard title="Tipos de Prenda" value="N/A" icon={FileText} description="Categorías distintas" />
-          <StatsCard title="Colores Predominantes" value="N/A" icon={Palette} description="Diversidad de colores" />
+          <StatsCard title="Estilos Diferentes" value={stats.prendasPorEstiloCount.toString()} icon={LayoutGrid} description="En tus prendas activas" />
+          <StatsCard title="Looks Usados (Mes)" value={stats.looksUsadosEsteMes.toString()} icon={CalendarClock} description="Asignaciones en calendario" />
         </div>
         
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2"> {/* Adjusted grid for two main cards */}
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2"> 
           <Card className="shadow-lg rounded-xl">
             <CardHeader>
               <CardTitle>Distribución de Colores</CardTitle>
@@ -173,9 +173,8 @@ export default function HomePage() { // Renamed from DashboardPage
           </Card>
         </div>
         
-        {/* Add the new prompt component here */}
         <div className="grid grid-cols-1">
-           <NuevoPrompts />
+           <NuevoPrompts suggestionForDisplay={randomSuggestion} />
         </div>
 
       </main>
